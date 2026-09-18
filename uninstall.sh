@@ -120,5 +120,14 @@ if [ "$DRY" = "1" ]; then
 else
   printf "  The repo itself is still here. Delete the directory to finish,\n"
   printf "  or run ./setup.sh to start over.\n\n"
-  [ "$ALL" = "0" ] && printf "  Still on disk: nginx and mailpit images, and the Docker build\n  cache. Use --all to remove those too.\n\n"
+  # A proper `if`, not `[ ... ] && printf`. As the LAST command in the script
+  # that idiom returns 1 whenever the test is false, so `--all` -- the path
+  # that does the most work -- exited non-zero after succeeding completely,
+  # and make reported Error 1 under a clean "Done".
+  if [ "$ALL" = "0" ]; then
+    printf "  Still on disk: nginx and mailpit images, and the Docker build\n"
+    printf "  cache. Use --all to remove those too.\n\n"
+  fi
 fi
+
+exit 0
