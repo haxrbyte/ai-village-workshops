@@ -57,9 +57,10 @@ reset:  ## wipe uploads and team state, keep the stack up
 	@docker compose restart listener mailmate hub >/dev/null
 	@echo "  state cleared"
 
-nuke:  ## stop everything and delete all state
-	@docker compose down -v
-	@docker run --rm -v "$(PWD)/state:/s" alpine sh -c 'rm -rf /s/* /s/.[!.]*' 2>/dev/null || true
-	@echo "  gone"
+uninstall:  ## remove everything this lab put on your machine
+	@./uninstall.sh
 
-.PHONY: help quickstart up down ps logs open check check-deep seed build reset nuke
+uninstall-all:  ## ...plus third-party images, build cache and the model
+	@./uninstall.sh --all --model
+
+.PHONY: help quickstart up down ps logs open check check-deep seed build reset uninstall uninstall-all

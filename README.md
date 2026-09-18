@@ -108,8 +108,26 @@ can watch it catch what the old one missed. See [SECURITY.md](SECURITY.md).
 ```
 make check        is the lab healthy?          make down     stop
 make check-deep   ...plus network isolation    make reset    clear team state
-make logs S=victim                             make nuke     delete everything
+make logs S=victim                             make up       start again
 ```
+
+## Removing it
+
+```bash
+./uninstall.sh              # containers, networks, images built here, state
+./uninstall.sh --all        # ...plus nginx/mailpit and the Docker build cache
+./uninstall.sh --model      # ...also the ~2 GB Ollama model it pulled
+./uninstall.sh --dry-run    # show what would go, change nothing
+```
+
+It prints exactly what it is about to remove and waits for confirmation.
+Everything is scoped to this project's compose stack — nothing else on your
+machine is touched unless you pass `--all` or `--model`, and both warn you
+first, because the build cache and the model are shared with anything else
+that uses them.
+
+The seven built images come to roughly 3 GB, so this is worth running rather
+than just deleting the directory.
 
 ## Instructor material
 
