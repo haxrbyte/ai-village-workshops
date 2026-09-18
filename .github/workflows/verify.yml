@@ -1,0 +1,69 @@
+name: verify
+
+# Clone -> green, with no human, on both architectures. This is the gate that
+# proves the published artefact actually works for a stranger.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Nothing may enter the repo that leaks identity or ships a payload binary.
+  lint-publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: No model weights or payload binaries in git
+        run: |
+          if git ls-files | grep -E '\.(bin|safetensors|pt|pth|pkl|ckpt|gguf)$'; then
+            echo "::error::a binary model/payload file is tracked -- see SECURITY.md"; exit 1
+          fi
+          echo "ok: no weights or payload binaries tracked"
+      - name: Nothing oversized
+        run: |
+          big=$(find . -type f -size +1M -not -path './.git/*' -print)
+          if [ -n "$big" ]; then echo "::error::files over 1 MB:"; echo "$big"; exit 1; fi
+          echo "ok: nothing over 1 MB"
+      - name: Shell and compose syntax
+        run: |
+          bash -n setup.sh
+          bash -n scripts/smoke.sh
+          bash -n scripts/gate3_workshop2.sh
+          python3 -m py_compile scripts/*.py
+          docker compose config -q
+          echo "ok: syntax clean"
+
+  e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # --canned: gate 3 tests Workshop 2, which never touches a model. Pulling
+      # 2 GB of llama per CI run would be waste.
+      - name: setup.sh (build from source, no model)
+        run: ./setup.sh --canned --build --port 8080
+
+      - name: Exercises 5-6 really import the module
+        run: python3 scripts/gate5_6_automap.py --lab http://localhost:8080
+
+      # The claim in SECURITY.md, asserted rather than assumed.
+      - name: victim and shellbox have no egress
+        run: |
+          for svc in victim shellbox; do
+            if docker compose exec -T $svc python -c \
+                 "import urllib.request; urllib.request.urlopen('http://1.1.1.1', timeout=4)" \
+                 >/dev/null 2>&1; then
+              echo "::error::$svc reached the internet -- the sandbox network is not isolating"; exit 1
+            fi
+            echo "ok: $svc is isolated"
+          done
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail 80

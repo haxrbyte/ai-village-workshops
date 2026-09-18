@@ -1,0 +1,4 @@
+# frozen 2026-08-25 — /opt/ps-old
+# THESE VERSIONS ARE THE EXERCISE. Changing either one
+# deletes Workshop 2 exercise 4 or Talk 2 L1.
+picklescan==0.0.15

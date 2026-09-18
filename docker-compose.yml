@@ -1,0 +1,246 @@
+name: modellab
+
+# ---------------------------------------------------------------------------
+# Build state: Gates 0-3.  Still missing: mailmate, mailsink (Gate 4).
+# nginx already routes to them and returns 502 until they exist — deliberate,
+# see nginx/default.conf.
+# ---------------------------------------------------------------------------
+
+x-common: &common
+  restart: unless-stopped
+  networks: [lab]
+  environment:
+    LAB_URL: ${LAB_URL:-http://northwind.local}
+    TZ: ${TZ:-UTC}
+
+x-hc: &hc
+  interval: 10s
+  timeout: 3s
+  retries: 5
+  start_period: 30s
+
+services:
+  # ---- shellbox: catches exercise 7's reverse shell on the attendee's behalf.
+  # A browser cannot listen on a port, so the web version of that exercise was
+  # impossible. This holds the socket instead and the page drives it. Its own
+  # service on purpose: the listener is the feedback layer for both workshops
+  # and must not be destabilised by socket handling.
+  shellbox:
+    # Both keys on purpose: `up` PULLS the published image, `up --build`
+    # builds from source. Contributors and users share one file.
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/shellbox:${LAB_VERSION:-edge}
+    build: ./shellbox
+    <<: *common
+    networks: [sandbox]
+    mem_limit: 256m
+    environment:
+      SHELLBOX_HOST: ${SHELLBOX_HOST:-shellbox}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request as u; u.urlopen('http://localhost:8007/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  nginx:
+    # Pinned by DIGEST at the Sept 5 freeze — the tag is kept for humans,
+    # the digest is what Docker actually resolves. Regenerate with
+    # `make freeze`, which writes lab/images.lock.
+    image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+    <<: *common
+    ports: ["${LAB_PORT:-8080}:80"]
+    # --------------------------------------------------------------------
+    # northwind.local resolves INSIDE the lab network, straight to this container.
+    #
+    # Attendee payloads embed the literal string http://northwind.local/pwned and
+    # then execute inside the victim container. Router DNS only serves the
+    # attendees' own devices — containers use Docker's embedded DNS, which
+    # knows nothing about northwind.local. Without this alias every Workshop 2
+    # beacon and every Workshop 1 notebook call fails from inside a container.
+    #
+    # This is independent of the router entry in §3.1: that one serves phones
+    # and laptops, this one serves containers. Both are needed.
+    # --------------------------------------------------------------------
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks:
+      lab:
+        aliases: [northwind.local]
+      sandbox:
+        aliases: [northwind.local]
+    volumes:
+      - "./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro"
+      # Attendee-facing static pages (/start, /w1, /w2). Mounted, not baked,
+      # so wording can be fixed on the day without rebuilding an image.
+      - "./www:/usr/share/nginx/www:ro"
+    depends_on:
+      hub:        {condition: service_healthy}
+      listener:   {condition: service_healthy}
+      scoreboard: {condition: service_healthy}
+      scanner:    {condition: service_healthy}
+      mailmate:   {condition: service_healthy}
+    healthcheck:
+      # 127.0.0.1, NOT localhost: `listen 80` binds IPv4 only, and localhost
+      # resolves to ::1 first inside the container -> connection refused, so
+      # nginx reports unhealthy while serving traffic perfectly.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      <<: *hc
+
+  hub:
+    # Both keys on purpose: `up` PULLS the published image, `up --build`
+    # builds from source. Contributors and users share one file.
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/hub:${LAB_VERSION:-edge}
+    build: ./hub
+    <<: *common
+    networks: [lab, sandbox]
+    volumes:
+      - "./state/uploads:/data/uploads"
+      - "./models:/data/models:ro"
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      <<: *hc
+
+  listener:
+    # Both keys on purpose: `up` PULLS the published image, `up --build`
+    # builds from source. Contributors and users share one file.
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/listener:${LAB_VERSION:-edge}
+    build: ./listener
+    <<: *common
+    networks: [lab, sandbox]
+    environment:
+      LAB_URL: ${LAB_URL:-http://northwind.local}
+      TZ: ${TZ:-UTC}
+      HUB_URL: http://hub:8000
+    volumes: ["./state:/data"]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8002/health')"]
+      <<: *hc
+
+  scoreboard:
+    # Both keys on purpose: `up` PULLS the published image, `up --build`
+    # builds from source. Contributors and users share one file.
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/scoreboard:${LAB_VERSION:-edge}
+    build: ./scoreboard
+    <<: *common
+    environment:
+      LAB_URL: ${LAB_URL:-http://northwind.local}
+      TZ: ${TZ:-UTC}
+      # Scoreboard reads hits over HTTP, not by opening hits.db directly.
+      # A read-only bind mount of a WAL database fails when SQLite needs to
+      # recover the -wal file. This sidesteps that entirely.
+      LISTENER_URL: http://listener:8002
+    depends_on:
+      listener: {condition: service_healthy}
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8003/health')"]
+      <<: *hc
+
+  mailmate:
+    # Both keys on purpose: `up` PULLS the published image, `up --build`
+    # builds from source. Contributors and users share one file.
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/mailmate:${LAB_VERSION:-edge}
+    build: ./mailmate
+    <<: *common
+    environment:
+      LAB_URL: ${LAB_URL:-http://northwind.local}
+      TZ: ${TZ:-UTC}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_CONCURRENCY: ${OLLAMA_CONCURRENCY:-4}
+      OLLAMA_WAIT_SECONDS: ${OLLAMA_WAIT_SECONDS:-8}
+      MAILMATE_BACKEND: ${MAILMATE_BACKEND:-live}
+      LISTENER_URL: http://listener:8002
+      SMTP_HOST: mailsink
+      SMTP_PORT: "1025"
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes: ["./state:/data"]
+    depends_on:
+      listener: {condition: service_healthy}
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8001/health')"]
+      <<: *hc
+
+  mailsink:
+    # Pinned by digest — see the note on nginx above.
+    image: axllent/mailpit:v1.21@sha256:81370195cd4a0eab9604d17c2617a7525b0486f9365555253b6c5376c6350f1a
+    <<: *common
+    environment:
+      TZ: ${TZ:-UTC}
+      MP_SMTP_BIND_ADDR: "0.0.0.0:1025"
+      MP_UI_BIND_ADDR: "0.0.0.0:8025"
+      MP_WEBROOT: "/mail/"
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      <<: *hc
+
+  scanner:
+    # Both keys on purpose: `up` PULLS the published image, `up --build`
+    # builds from source. Contributors and users share one file.
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/scanner:${LAB_VERSION:-edge}
+    build: ./scanner
+    <<: *common
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8004/health')"]
+      <<: *hc
+
+  victim:
+    # Both keys on purpose: `up` PULLS the published image, `up --build`
+    # builds from source. Contributors and users share one file.
+    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/victim:${LAB_VERSION:-edge}
+    build: ./victim
+    <<: *common
+    networks: [sandbox]
+    environment:
+      HF_ENDPOINT: http://hub:8000
+      HF_HUB_OFFLINE: "1"
+      LISTENER_URL: http://listener:8002
+      POLL_SECONDS: "20"
+      TZ: ${TZ:-UTC}
+    depends_on:
+      hub:      {condition: service_healthy}
+      listener: {condition: service_healthy}
+    # 2g, not the 0.5g of v1 — torch is ~800 MB RSS before it loads anything.
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8006/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 90s
+
+
+  # ---- Ollama, Linux only (profile) --------------------------------------
+  # macOS does NOT use this: Docker cannot pass the Metal GPU through, so a
+  # containerised Ollama on a Mac is CPU-only inside a memory-capped VM and
+  # Workshop 1 becomes painfully slow. setup.sh picks host-vs-container for you.
+  ollama:
+    image: ollama/ollama:0.12.3
+    profiles: ["ollama"]
+    restart: unless-stopped
+    networks: [lab]
+    environment:
+      # 4 x 4096 = 4 GB of KV cache. Left unset, modern Ollama defaults to
+      # 32768 per slot and allocates ~17 GB.
+      OLLAMA_NUM_PARALLEL: 4
+      OLLAMA_CONTEXT_LENGTH: 4096
+      OLLAMA_MAX_QUEUE: 64
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_MAX_LOADED_MODELS: 1
+    # A BIND mount, not a named volume: `make nuke` runs `compose down -v`, and
+    # a volume would take the 2 GB model with it.
+    volumes: ["./ollama-models:/root/.ollama"]
+    mem_limit: 6g
+
+networks:
+  lab:
+    driver: bridge
+  # NO EGRESS. victim and shellbox run attendee-authored code; they can
+  # reach hub and listener and nothing else. Asserted by `make check-deep`.
+  sandbox:
+    driver: bridge
+    internal: true

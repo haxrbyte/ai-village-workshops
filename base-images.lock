@@ -1,0 +1,11 @@
+# frozen 2026-08-25
+# The FROM line of every built service. Pinned IN THE DOCKERFILES —
+# this file is the record, the Dockerfile is the enforcement.
+hub: python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+jupyter: quay.io/jupyterhub/jupyterhub:5@sha256:49319c3b8704e60d901832698cf13d67c845aede4f553b19b57952e3feb9fadd
+listener: python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+mailmate: python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+scanner: python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+scoreboard: python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+shellbox: python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a
+victim: python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a

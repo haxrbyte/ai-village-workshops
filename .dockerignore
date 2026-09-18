@@ -1,0 +1,4 @@
+.venv-*/
+state/
+models/
+.git/

@@ -1,0 +1,6 @@
+# torch CPU wheels — the Metal GPU belongs to Ollama, and this bot only needs
+# to *execute* payloads, not compute anything.
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+torch>=2.6
+transformers>=4.44

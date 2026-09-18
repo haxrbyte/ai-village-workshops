@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Village — Scoreboard</title>
+<style>
+  :root{
+    --bg:#0a0d14; --panel:#111725; --line:#1e2738;
+    --fg:#e8edf7; --dim:#7c8aa5;
+    --hot:#ff9f1c; --beacon:#3ddc97; --exfil:#ff6b8a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--fg); height:100vh; overflow:hidden;
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column;
+  }
+  header{
+    display:flex; align-items:baseline; gap:18px;
+    padding:20px 32px; border-bottom:1px solid var(--line);
+  }
+  h1{font-size:26px; font-weight:800; letter-spacing:-.02em}
+  h1 span{color:var(--hot)}
+  .sub{color:var(--dim); font-size:15px}
+  .live{margin-left:auto; display:flex; align-items:center; gap:9px;
+        color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--beacon);
+       animation:pulse 2s infinite}
+  .dot.stale{background:var(--exfil);animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  main{flex:1; display:grid; grid-template-columns:1.618fr 1fr; min-height:0}
+
+  /* ---- feed-only mode: /scoreboard?view=feed --------------------------------
+     Talk 1's Demo 3 points at the listener, and the leaderboard beside it is
+     workshop furniture the room does not need — worse, it shows whatever test
+     teams are in the db. This hides it and gives the feed the whole width, at
+     a row height that reads from the back of a room.
+
+     The WORKSHOP view is untouched: no query string, no change. This is an
+     added mode, not a replacement. */
+  body.feedonly main{grid-template-columns:1fr}
+  body.feedonly section:first-child{display:none}
+  body.feedonly section + section{border-left:none}
+  body.feedonly .feed{font-size:22px; gap:4px}
+  /* 56px row, matching FEED_ROW below. flex:none is inherited from .hit and is
+     what stops these squashing; the height override needs the same care as the
+     original — see the note on .hit. */
+  body.feedonly .hit{height:56px; padding:9px 16px; border-radius:9px}
+  body.feedonly .k{min-width:96px}
+  body.feedonly .t{font-size:19px}
+  section{padding:22px 32px; min-height:0; display:flex; flex-direction:column}
+  section + section{border-left:1px solid var(--line)}
+  h2{font-size:13px; text-transform:uppercase; letter-spacing:.12em;
+     color:var(--dim); font-weight:700; margin-bottom:16px}
+
+  /* ---- leaderboard ---- */
+  .rows{flex:1; min-height:0; overflow:hidden;
+        display:flex; flex-direction:column; gap:8px}
+  /* flex:1 above is what stops rows squashing, but it also makes an empty
+     board reserve the whole panel and push the "nothing yet" text to the
+     bottom of the screen. Collapse it when there is nothing in it. */
+  .rows:empty{flex:none}
+  .row{
+    display:grid; grid-template-columns:56px auto 1fr auto auto;
+    align-items:center; gap:16px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 20px;
+    /* Column flex items shrink below their content height by default. Without
+       this the rows squash and the text is clipped mid-glyph — see .hit. */
+    flex:none;
+  }
+  .row.new{animation:flash 1.4s ease-out}
+  @keyframes flash{
+    0%{background:#2a2010;border-color:var(--hot);transform:scale(1.012)}
+    100%{background:var(--panel);border-color:var(--line);transform:scale(1)}
+  }
+  .rank{font-size:26px; font-weight:800; color:var(--dim);
+        font-variant-numeric:tabular-nums}
+  .row:nth-child(1) .rank{color:var(--hot)}
+  .team{font-size:30px; font-weight:700; letter-spacing:-.01em;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lvl{font-size:14px; color:var(--dim); text-align:right;
+       font-variant-numeric:tabular-nums}
+  .lvl b{display:block; font-size:26px; color:var(--fg); font-weight:700}
+  .count{font-size:14px; color:var(--dim); text-align:right; min-width:74px;
+         font-variant-numeric:tabular-nums}
+  .count b{display:block; font-size:26px; color:var(--fg); font-weight:700}
+
+  /* ---- which workshop -------------------------------------------------------
+     Both workshops beacon a bare number, so before 12 Sept 2026 a Workshop 1
+     row and a Workshop 2 row were the same thing on screen: "level 3". The
+     chip is the default answer; the split view below is the other one. */
+  .ws{font-size:15px; font-weight:800; letter-spacing:.06em;
+      padding:4px 9px; border-radius:6px; border:1px solid;
+      font-variant-numeric:tabular-nums}
+  .ws.w1{color:var(--hot); border-color:#4a3a12; background:#241c08}
+  .ws.w2{color:#7cc4ff; border-color:#17384f; background:#081a26}
+
+  /* ---- split view: /scoreboard?view=split, or press W ----------------------
+     Two ladders side by side, one per workshop, each ranked on its own. The
+     chip is NOT rendered here — the column heading already says it, and the
+     width is worth more than a repeated label. */
+  body.split .rows{display:grid; grid-template-columns:1fr 1fr; gap:22px;
+                   align-items:start; overflow:hidden}
+  body.split .wcol{display:flex; flex-direction:column; min-height:0; gap:8px}
+  body.split .wcol h3{font-size:14px; text-transform:uppercase;
+      letter-spacing:.1em; font-weight:800; margin:0 0 2px}
+  body.split .wcol.c1 h3{color:var(--hot)}
+  body.split .wcol.c2 h3{color:#7cc4ff}
+  body.split .wrows{display:flex; flex-direction:column; gap:8px;
+                    min-height:0; overflow:hidden}
+  body.split .row{grid-template-columns:44px 1fr auto auto; padding:12px 16px}
+  body.split .team{font-size:23px}
+  body.split .rank{font-size:22px}
+  body.split .lvl b,body.split .count b{font-size:21px}
+  body.split .count{min-width:56px}
+  body.split .wempty{color:var(--dim); font-size:17px; padding:6px 2px}
+
+  /* ---- feed ---- */
+  .feed{flex:1; min-height:0; overflow:hidden;
+        display:flex; flex-direction:column; gap:2px;
+        font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:14px}
+  /* flex:none is load-bearing. These are flex items in a column, so they
+     default to flex-shrink:1 and get squeezed when more rows are rendered
+     than fit: 50 rows in ~1000px gave 18px against a natural 35px, and every
+     row was clipped through the middle of the text. The count is capped in
+     feedFit() now, and this stops the next overflow doing it again. */
+  .hit{display:flex; gap:12px; padding:7px 10px; border-radius:7px;
+       white-space:nowrap; overflow:hidden; flex:none; height:35px;
+       align-items:center}
+  .hit:nth-child(odd){background:#0e131e}
+  .hit.new{animation:flash 1.4s ease-out}
+  .t{color:var(--dim); font-variant-numeric:tabular-nums}
+  .k{font-weight:700; min-width:64px}
+  .k.beacon{color:var(--beacon)} .k.exfil{color:var(--exfil)}
+  .who{font-weight:700; overflow:hidden; text-overflow:ellipsis; min-width:0}
+  .who.unknown{color:var(--hot)}
+  .d{color:var(--dim); overflow:hidden; text-overflow:ellipsis; flex:1;
+     min-width:0}
+
+  .empty{color:var(--dim); font-size:17px; padding:26px 0; line-height:1.7}
+  .empty code{background:var(--panel); border:1px solid var(--line);
+              border-radius:6px; padding:3px 8px; font-size:14px}
+  .err{color:var(--exfil); font-size:15px; padding:10px 0}
+
+  /* Clear is deliberately quiet: this is a projector, and anyone on the LAN
+     can reach this page. Two-step to arm, and the action is reversible —
+     rows are archived, not deleted. */
+  .btn{background:transparent; border:1px solid var(--line); color:var(--dim);
+       font:inherit; font-size:13px; padding:5px 12px; border-radius:7px;
+       cursor:pointer; transition:.15s}
+  .btn:hover{border-color:var(--dim); color:var(--fg)}
+  .btn.armed{border-color:var(--hot); color:var(--hot)}
+  .btn.undo{border-color:var(--beacon); color:var(--beacon)}
+</style>
+</head>
+<body>
+  <header>
+    <h1>AI <span>VILLAGE</span></h1>
+    <div class="sub">__LAB_HOST__</div>
+    <div class="live">
+      <button class="btn" id="clear">Clear</button>
+      <span id="stat"></span>
+      <span class="dot" id="dot"></span>
+      <span id="clock"></span>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Teams</h2>
+      <div class="rows" id="rows"></div>
+      <div class="empty" id="empty">
+        Nothing on the board yet.<br>
+        First hit lands at <b>exercise 1</b> in Workshop 1, <b>exercise 2</b> in Workshop 2.
+        <div style="margin-top:14px">
+          Smoke test: <code>curl "__LAB_URL__/pwned?team=TEST&amp;level=1"</code>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Live feed</h2>
+      <div class="feed" id="feed"></div>
+    </section>
+  </main>
+
+<script>
+// ?view=feed (or ?feed) — the talk's listener surface. Read once at load;
+// nothing else in the page branches on it.
+if (/(^|[?&])(view=feed|feed)(&|$)/.test(location.search)) {
+  document.body.classList.add('feedonly');
+  document.title = 'Listener feed';
+  // "Live feed" is right in the workshop view, sitting next to "Teams". It is
+  // wrong here: Talk 1 says "show the listener feed" and "there it is, in the
+  // listener log", and the room should not have to map one phrase onto the
+  // other while you are pointing at a screen. Renamed in this mode only.
+  const h = document.querySelector('section + section h2');
+  if (h) h.textContent = 'Listener feed';
+  // Feed-only hides the teams panel entirely, so a REMEMBERED split would
+  // have render() building two ladders into a display:none element against a
+  // zero clientHeight. The restore below is guarded on this class; this line
+  // is belt and braces for anything that sets it earlier.
+  document.body.classList.remove('split');
+}
+
+// ?view=split (or press W) — two ladders, one per workshop, instead of one
+// merged ladder with W1/W2 chips. The choice is REMEMBERED, because the board
+// runs unattended on a projector and nobody wants to re-press a key after
+// every reload. Both read and write are wrapped: this page is served over
+// http, but a hardened browser can throw on localStorage rather than return
+// null, and an exception here would kill the poll loop below it.
+const WS_NAMES = {'1': 'The Document Did It', '2': 'Shells From The Hub'};
+function splitStored() {
+  try { return localStorage.getItem('nw-board-split') === '1' } catch (e) { return false }
+}
+function splitSet(on) {
+  document.body.classList.toggle('split', on);
+  try { localStorage.setItem('nw-board-split', on ? '1' : '0') } catch (e) {}
+}
+// Guarded, and the guard is the point: the feed-only block above runs FIRST
+// and cleared `split`, but this restore ran AFTERWARDS and put it straight
+// back — order-dependent, and invisible unless you load ?view=feed with a
+// remembered split. Same shape as the chained-replace bug in the deck
+// generator: the fix is to make the later write not happen, not to clear
+// earlier and hope.
+if (!document.body.classList.contains('feedonly')) {
+  if (/(^|[?&])(view=split|split)(&|$)/.test(location.search)) splitSet(true);
+  else if (splitStored()) document.body.classList.add('split');
+}
+
+addEventListener('keydown', e => {
+  if ((e.key === 'w' || e.key === 'W') && !document.body.classList.contains('feedonly')) {
+    splitSet(!document.body.classList.contains('split'));
+    render(lastScores, lastFeed);
+  }
+});
+
+let lastScores = [], lastFeed = [];
+
+const seenHits = new Set();
+const seenTeams = new Set();
+let first = true, fails = 0;
+
+const pad = n => String(n).padStart(2, '0');
+const hhmmss = ts => { const d = new Date(ts * 1000);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+
+function fit() {
+  // Show as many rows as the panel can hold, so it never scrolls on a projector.
+  // 90px measured row + 8px gap. The old divisor was 74 against a parent height
+  // that included the h2, which rendered 14 rows into room for 10 and pushed the
+  // bottom of the board off the screen — the same overflow the feed had, just
+  // quieter about it. Measure it again if .row's padding or font sizes change.
+  const rows = document.getElementById('rows');
+  // Split mode: each column carries an h3 and its own list, so the usable
+  // height is smaller AND the cap is PER COLUMN, not for the board. Rows are
+  // shorter here too (12px padding, 23px team) — measured 78px + 8px gap.
+  if (document.body.classList.contains('split')) {
+    return Math.max(2, Math.floor((rows.clientHeight - 30) / 86));
+  }
+  return Math.max(3, Math.floor(rows.clientHeight / 98));
+}
+
+// A team's level label. Workshop 1 counts EXERCISES, Workshop 2 counts LEVELS,
+// and the talk narrates them with those words — the board should not invent a
+// third vocabulary. top_level 0 means nothing numeric has landed yet (an exfil
+// hit before its award, or one of Talk 2's staged L-levels on an old row).
+function lvlHtml(s) {
+  if (!(s.top_level > 0)) return '<div class="lvl"></div>';
+  const word = s.ws === '1' ? 'ex' : 'level';
+  return `<div class="lvl">${word}<b>${s.top_level}</b></div>`;
+}
+
+function rowHtml(s, i, withChip) {
+  // Keyed on team AND workshop: /scores groups by (team, ws), so one person
+  // doing both workshops is two rows, and highlighting one must not mark the
+  // other as already seen.
+  const key = s.team + '|' + s.ws;
+  const isNew = !first && !seenTeams.has(key);
+  seenTeams.add(key);
+  const chip = withChip
+    ? `<div class="ws w${s.ws === '1' ? 1 : 2}">W${s.ws === '1' ? 1 : 2}</div>` : '';
+  return `<div class="row${isNew ? ' new' : ''}">
+      <div class="rank">${i + 1}</div>
+      ${chip}
+      <div class="team">${esc(s.team)}</div>
+      ${lvlHtml(s)}
+      <div class="count">hits<b>${s.hits}</b></div>
+    </div>`;
+}
+
+// 35px row + 2px gap normally; 56px + 4px in feed-only mode. Two divisors
+// because there are now two row heights, and this is the number that has
+// already been wrong twice — see the .hit and fit() notes.
+const FEED_ROW = () => document.body.classList.contains('feedonly') ? 60 : 37;
+
+function feedFit() {
+  // Same reason as fit(), and it is not optional here: the feed had no cap,
+  // so the listener's 50 rows were rendered into a panel that fits ~28 and
+  // every row was squashed to 18px.
+  return Math.max(4, Math.floor(document.getElementById('feed').clientHeight / FEED_ROW()));
+}
+
+async function tick() {
+  let scores, feed;
+  try {
+    [scores, feed] = await Promise.all([
+      fetch('/scores', {cache:'no-store'}).then(r => r.json()),
+      fetch('/feed',   {cache:'no-store'}).then(r => r.json()),
+    ]);
+    if (scores.error || feed.error) throw new Error(scores.error || feed.error);
+    fails = 0;
+    document.getElementById('dot').classList.remove('stale');
+  } catch (e) {
+    fails++;
+    document.getElementById('dot').classList.add('stale');
+    document.getElementById('stat').textContent =
+      fails > 2 ? 'listener unreachable' : '';
+    return;
+  }
+
+  lastScores = scores; lastFeed = feed;
+  render(scores, feed);
+}
+
+// Split out of tick() on 12 Sept 2026 so the W key can re-render from the last
+// poll instead of making the layout wait up to 3s for the next one.
+function render(scores, feed) {
+  // ---- leaderboard ----
+  const rowsEl = document.getElementById('rows');
+  // Toggle the empty panel BEFORE measuring. It shares the flex column with
+  // .rows, so measuring first sizes the board against a panel that is about to
+  // grow — the tick after a Clear+Undo rendered 8 rows where 10 fit, and only
+  // corrected itself three seconds later.
+  document.getElementById('empty').style.display = scores.length ? 'none' : 'block';
+  const limit = fit();
+
+  if (document.body.classList.contains('split')) {
+    // Two ladders, each ranked on its own. `limit` is per column here.
+    rowsEl.innerHTML = ['1', '2'].map((ws, ci) => {
+      const mine = scores.filter(s => (s.ws === '1' ? '1' : '2') === ws);
+      const body = mine.length
+        ? mine.slice(0, limit).map((s, i) => rowHtml(s, i, false)).join('')
+        : '<div class="wempty">Nothing yet.</div>';
+      return `<div class="wcol c${ci + 1}">
+        <h3>${esc(WS_NAMES[ws])}</h3>
+        <div class="wrows">${body}</div>
+      </div>`;
+    }).join('');
+  } else {
+    rowsEl.innerHTML =
+      scores.slice(0, limit).map((s, i) => rowHtml(s, i, true)).join('');
+  }
+
+  // ---- feed ----
+  document.getElementById('feed').innerHTML = feed.slice(0, feedFit()).map(h => {
+    const isNew = !first && !seenHits.has(h.id);
+    seenHits.add(h.id);
+    const unk = h.team === 'UNKNOWN' ? ' unknown' : '';
+    // A beacon alone never said which workshop it came from, which is the
+    // whole reason this column existed for Workshop 2 only in practice.
+    const w = h.ws === '1' ? 'W1' : 'W2';
+    const detail = h.kind === 'beacon'
+      ? `${w} · ${h.ws === '1' ? 'ex' : 'level'} ${h.level}`
+      : (h.data || '').slice(0, 44);
+    return `<div class="hit${isNew ? ' new' : ''}">
+      <span class="t">${hhmmss(h.ts)}</span>
+      <span class="k ${h.kind}">${h.kind}</span>
+      <span class="who${unk}">${esc(h.team)}</span>
+      <span class="d">${esc(detail)}</span>
+    </div>`;
+  }).join('');
+
+  const teams = scores.length;
+  const hits = scores.reduce((a, s) => a + s.hits, 0);
+  const unk = scores.find(s => s.team === 'UNKNOWN');
+  document.getElementById('stat').textContent =
+    `${hits} hits · ${teams} teams` + (unk ? ` · ${unk.hits} unattributed` : '');
+
+  first = false;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+// ---- Clear ---------------------------------------------------------------
+// Two-step, then an undo window. The board is on a projector on a network the
+// attendees are on, so a single unguarded click could wipe the scoreboard mid
+// workshop. Nothing is deleted — /archive flips hits.archived, and undo flips
+// it back — but a room watching its scores vanish does not know that.
+const clearBtn = document.getElementById('clear');
+let armed = null, undoTimer = null;
+
+function resetBtn() {
+  clearTimeout(armed); clearTimeout(undoTimer);
+  armed = null; undoTimer = null;
+  clearBtn.className = 'btn';
+  clearBtn.textContent = 'Clear';
+}
+
+async function post(undo) {
+  const r = await fetch('/archive' + (undo ? '?undo=true' : ''), {method:'POST'});
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  seenHits.clear(); seenTeams.clear();
+  first = true;
+  await tick();
+  return j.rows;
+}
+
+clearBtn.addEventListener('click', async () => {
+  if (clearBtn.classList.contains('undo')) {          // third state: undo
+    try { await post(true); } catch (e) {}
+    resetBtn();
+    return;
+  }
+  if (!armed) {                                        // first click: arm
+    clearBtn.classList.add('armed');
+    clearBtn.textContent = 'Clear the board?';
+    armed = setTimeout(resetBtn, 4000);
+    return;
+  }
+  clearTimeout(armed); armed = null;                   // second click: do it
+  let n = 0;
+  try { n = await post(false); } catch (e) { resetBtn(); return; }
+  clearBtn.className = 'btn undo';
+  clearBtn.textContent = `Undo (${n})`;
+  undoTimer = setTimeout(resetBtn, 20000);
+});
+
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('clock').textContent =
+    `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}, 1000);
+
+tick();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>

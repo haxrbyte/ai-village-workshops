@@ -1,0 +1,80 @@
+Loading pretrained model
+Loading datasets
+Training
+Trainable parameters: 0.091% (3.670M/4022.468M)
+Starting training..., iters: 600
+Calculating loss...:   0%|          | 0/13 [00:00<?, ?it/s]Calculating loss...:   8%|▊         | 1/13 [00:01<00:13,  1.15s/it]Calculating loss...:  15%|█▌        | 2/13 [00:01<00:08,  1.36it/s]Calculating loss...:  23%|██▎       | 3/13 [00:02<00:06,  1.65it/s]Calculating loss...:  31%|███       | 4/13 [00:02<00:05,  1.60it/s]Calculating loss...:  38%|███▊      | 5/13 [00:03<00:04,  1.78it/s]Calculating loss...:  46%|████▌     | 6/13 [00:03<00:03,  1.91it/s]Calculating loss...:  54%|█████▍    | 7/13 [00:04<00:03,  2.00it/s]Calculating loss...:  62%|██████▏   | 8/13 [00:04<00:02,  1.83it/s]Calculating loss...:  69%|██████▉   | 9/13 [00:05<00:02,  1.94it/s]Calculating loss...:  77%|███████▋  | 10/13 [00:05<00:01,  2.04it/s]Calculating loss...:  85%|████████▍ | 11/13 [00:06<00:01,  1.86it/s]Calculating loss...:  92%|█████████▏| 12/13 [00:06<00:00,  1.75it/s]Calculating loss...: 100%|██████████| 13/13 [00:07<00:00,  1.68it/s]Calculating loss...: 100%|██████████| 13/13 [00:07<00:00,  1.73it/s]
+Iter 1: Val loss 5.611, Val took 7.950s
+Iter 10: Train loss 4.047, Learning Rate 1.000e-05, It/sec 0.753, Tokens/sec 185.225, Trained Tokens 2460, Peak mem 3.749 GB
+Iter 20: Train loss 2.006, Learning Rate 1.000e-05, It/sec 1.166, Tokens/sec 283.979, Trained Tokens 4895, Peak mem 3.749 GB
+Iter 30: Train loss 1.520, Learning Rate 1.000e-05, It/sec 1.114, Tokens/sec 271.592, Trained Tokens 7333, Peak mem 3.749 GB
+Iter 40: Train loss 1.171, Learning Rate 1.000e-05, It/sec 1.185, Tokens/sec 281.251, Trained Tokens 9706, Peak mem 3.749 GB
+Iter 50: Train loss 0.901, Learning Rate 1.000e-05, It/sec 1.291, Tokens/sec 314.909, Trained Tokens 12145, Peak mem 3.749 GB
+Iter 60: Train loss 0.749, Learning Rate 1.000e-05, It/sec 1.278, Tokens/sec 306.036, Trained Tokens 14539, Peak mem 3.749 GB
+Iter 70: Train loss 0.570, Learning Rate 1.000e-05, It/sec 1.222, Tokens/sec 289.929, Trained Tokens 16912, Peak mem 3.749 GB
+Iter 80: Train loss 0.489, Learning Rate 1.000e-05, It/sec 1.128, Tokens/sec 275.947, Trained Tokens 19358, Peak mem 3.749 GB
+Iter 90: Train loss 0.399, Learning Rate 1.000e-05, It/sec 1.227, Tokens/sec 301.980, Trained Tokens 21819, Peak mem 3.749 GB
+Iter 100: Train loss 0.421, Learning Rate 1.000e-05, It/sec 1.169, Tokens/sec 282.415, Trained Tokens 24234, Peak mem 3.749 GB
+Iter 100: Saved adapter weights to adapters-run5/adapters.safetensors and adapters-run5/0000100_adapters.safetensors.
+Iter 110: Train loss 0.322, Learning Rate 1.000e-05, It/sec 1.076, Tokens/sec 275.127, Trained Tokens 26791, Peak mem 3.764 GB
+Iter 120: Train loss 0.268, Learning Rate 1.000e-05, It/sec 1.109, Tokens/sec 271.826, Trained Tokens 29241, Peak mem 3.764 GB
+Iter 130: Train loss 0.246, Learning Rate 1.000e-05, It/sec 1.223, Tokens/sec 296.228, Trained Tokens 31663, Peak mem 3.764 GB
+Iter 140: Train loss 0.194, Learning Rate 1.000e-05, It/sec 1.135, Tokens/sec 278.502, Trained Tokens 34116, Peak mem 3.764 GB
+Iter 150: Train loss 0.226, Learning Rate 1.000e-05, It/sec 1.135, Tokens/sec 281.894, Trained Tokens 36600, Peak mem 3.764 GB
+Iter 160: Train loss 0.215, Learning Rate 1.000e-05, It/sec 1.138, Tokens/sec 273.364, Trained Tokens 39003, Peak mem 3.764 GB
+Iter 170: Train loss 0.205, Learning Rate 1.000e-05, It/sec 1.235, Tokens/sec 296.444, Trained Tokens 41403, Peak mem 3.764 GB
+Iter 180: Train loss 0.187, Learning Rate 1.000e-05, It/sec 1.134, Tokens/sec 284.382, Trained Tokens 43910, Peak mem 3.764 GB
+Iter 190: Train loss 0.209, Learning Rate 1.000e-05, It/sec 1.183, Tokens/sec 282.365, Trained Tokens 46297, Peak mem 3.764 GB
+Calculating loss...:   0%|          | 0/13 [00:00<?, ?it/s]Calculating loss...:   8%|▊         | 1/13 [00:00<00:07,  1.57it/s]Calculating loss...:  15%|█▌        | 2/13 [00:01<00:05,  1.94it/s]Calculating loss...:  23%|██▎       | 3/13 [00:01<00:04,  2.10it/s]Calculating loss...:  31%|███       | 4/13 [00:02<00:04,  1.86it/s]Calculating loss...:  38%|███▊      | 5/13 [00:02<00:04,  1.74it/s]Calculating loss...:  46%|████▌     | 6/13 [00:03<00:04,  1.68it/s]Calculating loss...:  54%|█████▍    | 7/13 [00:03<00:03,  1.85it/s]Calculating loss...:  62%|██████▏   | 8/13 [00:04<00:02,  1.98it/s]Calculating loss...:  69%|██████▉   | 9/13 [00:04<00:01,  2.08it/s]Calculating loss...:  77%|███████▋  | 10/13 [00:05<00:01,  2.15it/s]Calculating loss...:  85%|████████▍ | 11/13 [00:05<00:00,  2.20it/s]Calculating loss...:  92%|█████████▏| 12/13 [00:05<00:00,  2.23it/s]Calculating loss...: 100%|██████████| 13/13 [00:06<00:00,  1.98it/s]Calculating loss...: 100%|██████████| 13/13 [00:06<00:00,  1.96it/s]
+Iter 200: Val loss 0.208, Val took 6.627s
+Iter 200: Train loss 0.184, Learning Rate 1.000e-05, It/sec 1.238, Tokens/sec 300.369, Trained Tokens 48724, Peak mem 3.764 GB
+Iter 200: Saved adapter weights to adapters-run5/adapters.safetensors and adapters-run5/0000200_adapters.safetensors.
+Iter 210: Train loss 0.186, Learning Rate 1.000e-05, It/sec 1.186, Tokens/sec 297.526, Trained Tokens 51233, Peak mem 3.764 GB
+Iter 220: Train loss 0.185, Learning Rate 1.000e-05, It/sec 1.231, Tokens/sec 295.251, Trained Tokens 53631, Peak mem 3.764 GB
+Iter 230: Train loss 0.189, Learning Rate 1.000e-05, It/sec 1.236, Tokens/sec 294.980, Trained Tokens 56018, Peak mem 3.764 GB
+Iter 240: Train loss 0.178, Learning Rate 1.000e-05, It/sec 1.232, Tokens/sec 289.135, Trained Tokens 58364, Peak mem 3.764 GB
+Iter 250: Train loss 0.161, Learning Rate 1.000e-05, It/sec 1.091, Tokens/sec 282.501, Trained Tokens 60954, Peak mem 3.764 GB
+Iter 260: Train loss 0.162, Learning Rate 1.000e-05, It/sec 1.185, Tokens/sec 280.854, Trained Tokens 63324, Peak mem 3.764 GB
+Iter 270: Train loss 0.160, Learning Rate 1.000e-05, It/sec 1.183, Tokens/sec 279.962, Trained Tokens 65691, Peak mem 3.764 GB
+Iter 280: Train loss 0.148, Learning Rate 1.000e-05, It/sec 1.348, Tokens/sec 327.900, Trained Tokens 68123, Peak mem 3.764 GB
+Iter 290: Train loss 0.172, Learning Rate 1.000e-05, It/sec 1.184, Tokens/sec 284.682, Trained Tokens 70528, Peak mem 3.764 GB
+Iter 300: Train loss 0.164, Learning Rate 1.000e-05, It/sec 1.137, Tokens/sec 291.396, Trained Tokens 73091, Peak mem 3.764 GB
+Iter 300: Saved adapter weights to adapters-run5/adapters.safetensors and adapters-run5/0000300_adapters.safetensors.
+Iter 310: Train loss 0.170, Learning Rate 1.000e-05, It/sec 1.189, Tokens/sec 286.246, Trained Tokens 75499, Peak mem 3.764 GB
+Iter 320: Train loss 0.164, Learning Rate 1.000e-05, It/sec 1.187, Tokens/sec 284.309, Trained Tokens 77895, Peak mem 3.764 GB
+Iter 330: Train loss 0.174, Learning Rate 1.000e-05, It/sec 1.183, Tokens/sec 283.645, Trained Tokens 80292, Peak mem 3.764 GB
+Iter 340: Train loss 0.166, Learning Rate 1.000e-05, It/sec 1.139, Tokens/sec 280.685, Trained Tokens 82756, Peak mem 3.764 GB
+Iter 350: Train loss 0.157, Learning Rate 1.000e-05, It/sec 1.139, Tokens/sec 280.193, Trained Tokens 85217, Peak mem 3.764 GB
+Iter 360: Train loss 0.173, Learning Rate 1.000e-05, It/sec 1.187, Tokens/sec 301.064, Trained Tokens 87753, Peak mem 3.764 GB
+Iter 370: Train loss 0.171, Learning Rate 1.000e-05, It/sec 1.292, Tokens/sec 303.689, Trained Tokens 90103, Peak mem 3.764 GB
+Iter 380: Train loss 0.151, Learning Rate 1.000e-05, It/sec 1.184, Tokens/sec 284.564, Trained Tokens 92506, Peak mem 3.764 GB
+Iter 390: Train loss 0.146, Learning Rate 1.000e-05, It/sec 1.188, Tokens/sec 294.836, Trained Tokens 94988, Peak mem 3.764 GB
+Calculating loss...:   0%|          | 0/13 [00:00<?, ?it/s]Calculating loss...:   8%|▊         | 1/13 [00:00<00:05,  2.32it/s]Calculating loss...:  15%|█▌        | 2/13 [00:01<00:06,  1.81it/s]Calculating loss...:  23%|██▎       | 3/13 [00:01<00:04,  2.01it/s]Calculating loss...:  31%|███       | 4/13 [00:02<00:04,  1.81it/s]Calculating loss...:  38%|███▊      | 5/13 [00:02<00:04,  1.97it/s]Calculating loss...:  46%|████▌     | 6/13 [00:02<00:03,  2.08it/s]Calculating loss...:  54%|█████▍    | 7/13 [00:03<00:03,  1.87it/s]Calculating loss...:  62%|██████▏   | 8/13 [00:04<00:02,  1.99it/s]Calculating loss...:  69%|██████▉   | 9/13 [00:04<00:02,  1.84it/s]Calculating loss...:  77%|███████▋  | 10/13 [00:05<00:01,  1.97it/s]Calculating loss...:  85%|████████▍ | 11/13 [00:05<00:00,  2.07it/s]Calculating loss...:  92%|█████████▏| 12/13 [00:06<00:00,  1.89it/s]Calculating loss...: 100%|██████████| 13/13 [00:06<00:00,  2.00it/s]Calculating loss...: 100%|██████████| 13/13 [00:06<00:00,  1.96it/s]
+Iter 400: Val loss 0.186, Val took 6.639s
+Iter 400: Train loss 0.145, Learning Rate 1.000e-05, It/sec 1.133, Tokens/sec 276.055, Trained Tokens 97424, Peak mem 3.764 GB
+Iter 400: Saved adapter weights to adapters-run5/adapters.safetensors and adapters-run5/0000400_adapters.safetensors.
+Iter 410: Train loss 0.158, Learning Rate 1.000e-05, It/sec 1.232, Tokens/sec 300.428, Trained Tokens 99862, Peak mem 3.764 GB
+Iter 420: Train loss 0.157, Learning Rate 1.000e-05, It/sec 1.286, Tokens/sec 308.404, Trained Tokens 102261, Peak mem 3.764 GB
+Iter 430: Train loss 0.153, Learning Rate 1.000e-05, It/sec 1.185, Tokens/sec 288.206, Trained Tokens 104693, Peak mem 3.764 GB
+Iter 440: Train loss 0.146, Learning Rate 1.000e-05, It/sec 1.099, Tokens/sec 268.369, Trained Tokens 107134, Peak mem 3.764 GB
+Iter 450: Train loss 0.145, Learning Rate 1.000e-05, It/sec 1.138, Tokens/sec 286.995, Trained Tokens 109656, Peak mem 3.764 GB
+Iter 460: Train loss 0.157, Learning Rate 1.000e-05, It/sec 1.285, Tokens/sec 300.622, Trained Tokens 111995, Peak mem 3.764 GB
+Iter 470: Train loss 0.153, Learning Rate 1.000e-05, It/sec 1.134, Tokens/sec 283.058, Trained Tokens 114492, Peak mem 3.764 GB
+Iter 480: Train loss 0.159, Learning Rate 1.000e-05, It/sec 1.091, Tokens/sec 271.537, Trained Tokens 116981, Peak mem 3.764 GB
+Iter 490: Train loss 0.163, Learning Rate 1.000e-05, It/sec 1.291, Tokens/sec 300.768, Trained Tokens 119310, Peak mem 3.764 GB
+Iter 500: Train loss 0.158, Learning Rate 1.000e-05, It/sec 1.186, Tokens/sec 287.989, Trained Tokens 121739, Peak mem 3.764 GB
+Iter 500: Saved adapter weights to adapters-run5/adapters.safetensors and adapters-run5/0000500_adapters.safetensors.
+Iter 510: Train loss 0.149, Learning Rate 1.000e-05, It/sec 1.189, Tokens/sec 295.933, Trained Tokens 124228, Peak mem 3.764 GB
+Iter 520: Train loss 0.154, Learning Rate 1.000e-05, It/sec 1.348, Tokens/sec 321.522, Trained Tokens 126614, Peak mem 3.764 GB
+Iter 530: Train loss 0.143, Learning Rate 1.000e-05, It/sec 1.056, Tokens/sec 267.836, Trained Tokens 129151, Peak mem 3.764 GB
+Iter 540: Train loss 0.137, Learning Rate 1.000e-05, It/sec 1.238, Tokens/sec 295.923, Trained Tokens 131542, Peak mem 3.764 GB
+Iter 550: Train loss 0.141, Learning Rate 1.000e-05, It/sec 1.233, Tokens/sec 295.336, Trained Tokens 133937, Peak mem 3.764 GB
+Iter 560: Train loss 0.140, Learning Rate 1.000e-05, It/sec 1.180, Tokens/sec 287.234, Trained Tokens 136371, Peak mem 3.764 GB
+Iter 570: Train loss 0.156, Learning Rate 1.000e-05, It/sec 1.289, Tokens/sec 308.559, Trained Tokens 138765, Peak mem 3.764 GB
+Iter 580: Train loss 0.161, Learning Rate 1.000e-05, It/sec 1.186, Tokens/sec 291.410, Trained Tokens 141223, Peak mem 3.764 GB
+Iter 590: Train loss 0.146, Learning Rate 1.000e-05, It/sec 1.237, Tokens/sec 289.916, Trained Tokens 143567, Peak mem 3.764 GB
+Calculating loss...:   0%|          | 0/13 [00:00<?, ?it/s]Calculating loss...:   8%|▊         | 1/13 [00:00<00:05,  2.33it/s]Calculating loss...:  15%|█▌        | 2/13 [00:01<00:06,  1.81it/s]Calculating loss...:  23%|██▎       | 3/13 [00:01<00:04,  2.02it/s]Calculating loss...:  31%|███       | 4/13 [00:02<00:04,  1.81it/s]Calculating loss...:  38%|███▊      | 5/13 [00:02<00:04,  1.71it/s]Calculating loss...:  46%|████▌     | 6/13 [00:03<00:03,  1.88it/s]Calculating loss...:  54%|█████▍    | 7/13 [00:03<00:03,  2.00it/s]Calculating loss...:  62%|██████▏   | 8/13 [00:04<00:02,  1.84it/s]Calculating loss...:  69%|██████▉   | 9/13 [00:04<00:02,  1.97it/s]Calculating loss...:  77%|███████▋  | 10/13 [00:05<00:01,  2.07it/s]Calculating loss...:  85%|████████▍ | 11/13 [00:05<00:00,  2.14it/s]Calculating loss...:  92%|█████████▏| 12/13 [00:05<00:00,  2.19it/s]Calculating loss...: 100%|██████████| 13/13 [00:06<00:00,  1.96it/s]Calculating loss...: 100%|██████████| 13/13 [00:06<00:00,  1.96it/s]
+Iter 600: Val loss 0.181, Val took 6.640s
+Iter 600: Train loss 0.144, Learning Rate 1.000e-05, It/sec 1.050, Tokens/sec 263.130, Trained Tokens 146074, Peak mem 3.764 GB
+Iter 600: Saved adapter weights to adapters-run5/adapters.safetensors and adapters-run5/0000600_adapters.safetensors.
+Saved final weights to adapters-run5/adapters.safetensors.

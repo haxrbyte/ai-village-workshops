@@ -1,0 +1,5 @@
+# frozen 2026-08-25
+# Tags move. Digests do not. Pin these in docker-compose.yml if you
+# want the freeze to be enforced rather than merely recorded.
+nginx: nginx@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+mailsink: axllent/mailpit@sha256:81370195cd4a0eab9604d17c2617a7525b0486f9365555253b6c5376c6350f1a

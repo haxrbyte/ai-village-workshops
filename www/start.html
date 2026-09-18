@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Village — Start Here</title>
+<style>
+  :root{
+    /* Names and values follow scoreboard/static/board.html, with ONE deliberate
+       exception: the board's --beacon green (#3ddc97) is --ok cyan here.
+       Green was doing two jobs (every button AND every success), which spent
+       the only good-news colour on furniture. Cyan also separates from --hot
+       on the blue-yellow axis, so it survives red-green colour blindness —
+       orange "you are here" vs cyan "it fired" stays readable. */
+    --bg:#0a0d14; --panel:#111725; --line:#1e2738;
+    --fg:#e8edf7; --dim:#7c8aa5;
+    --hot:#ff9f1c; --ok:#3dd2e8; --exfil:#ff6b8a;
+    --panel2:#0e131e;                 /* the board's alternating-row shade */
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font-family:var(--sans);line-height:1.55;
+    padding:clamp(1rem,4vw,3rem);
+  }
+  .wrap{max-width:920px;margin:0 auto}
+
+  header{margin-bottom:2rem}
+  /* matches the board's header exactly: 26px, 800, -.02em, orange accent */
+  h1{
+    font-size:clamp(1.6rem,5vw,26px);font-weight:800;
+    margin:0 0 .3rem;letter-spacing:-.02em;
+  }
+  h1 span{color:var(--hot)}
+  .tag{color:var(--dim);font-size:1.05rem;margin:0}
+
+  /* ---- step 1: team name ---- */
+  .step{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:1.3rem 1.4rem;margin-bottom:1.2rem;
+  }
+  .step h2{
+    font-size:.82rem;text-transform:uppercase;letter-spacing:.11em;
+    color:var(--dim);margin:0 0 .8rem;font-weight:600;
+  }
+  .step h2 b{color:var(--hot);font-weight:600}
+
+  .teamrow{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  input[type=text]{
+    flex:1;min-width:220px;background:var(--bg);color:var(--fg);
+    border:1px solid var(--line);border-radius:8px;
+    padding:.75rem .9rem;font-family:var(--mono);font-size:1.15rem;
+  }
+  input[type=text]:focus{outline:2px solid var(--ok);outline-offset:1px}
+  .hint{color:var(--dim);font-size:.9rem;margin:.6rem 0 0}
+  .bad{color:var(--exfil);font-size:.9rem;margin:.6rem 0 0;min-height:1.2em}
+
+  /* ---- step 2: pick a workshop ---- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
+  .card{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:1.3rem 1.4rem;display:flex;flex-direction:column;
+  }
+  .card .num{font-family:var(--mono);color:var(--dim);font-size:.8rem;letter-spacing:.1em}
+  .card h3{margin:.25rem 0 .1rem;font-size:1.3rem}
+  .card .sub{color:var(--dim);font-family:var(--mono);font-size:.85rem;margin:0 0 .7rem}
+  .card p.desc{margin:0 0 1.1rem;color:var(--dim);font-size:.97rem;flex:1}
+
+  /* The board fills no button: every one is transparent + 1px border +
+     coloured text (.btn / .btn.armed / .btn.undo). Matching that system also
+     retires #06231a, which was a hand-mixed green found nowhere in the palette.
+     Enabled borrows .btn.undo (green = the thing worked); disabled IS the
+     board's base .btn, unchanged. */
+  .btn{
+    display:block;text-align:center;text-decoration:none;
+    background:transparent;border:1px solid var(--ok);color:var(--ok);
+    font-weight:700;padding:.85rem 1rem;border-radius:9px;font-size:1.05rem;
+    cursor:pointer;font-family:var(--sans);
+  }
+  .btn:hover{background:rgba(61,210,232,.10)}
+  .btn:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+  .btn[aria-disabled=true]{
+    border-color:var(--line);color:var(--dim);background:transparent;
+    font-weight:500;font-size:.95rem;pointer-events:none;
+  }
+
+  .alt{
+    margin-top:.8rem;font-size:.88rem;color:var(--dim);
+    text-align:center;
+  }
+  .alt a{color:var(--dim);text-decoration:underline}
+  .alt a:hover{color:var(--fg)}
+
+  /* ---- step 3: the notebook route ---- */
+  .nb{display:grid;grid-template-columns:1.1fr 1fr;gap:1.4rem}
+  @media(max-width:760px){.nb{grid-template-columns:1fr}}
+  .nb h3{margin:0 0 .4rem;font-size:1.1rem}
+  .nb p{margin:0 0 .7rem;color:var(--dim);font-size:.95rem}
+  .nb p:last-child{margin-bottom:0}
+  .nb .what{color:var(--fg)}
+  .nb ol{margin:0;padding-left:1.25rem;font-size:.94rem;color:var(--fg)}
+  .nb ol li{margin-bottom:.5rem}
+  .nb ol li:last-child{margin-bottom:0}
+  .nb code{font-size:.9em}
+  .nb .btn{margin-top:.9rem}
+  .nb .warn{color:var(--hot);font-size:.9rem}
+
+  /* ---- footer strip ---- */
+  .strip{
+    margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--line);
+    display:flex;gap:1.4rem;flex-wrap:wrap;
+    font-size:.9rem;color:var(--dim);
+  }
+  .strip a{color:var(--ok);text-decoration:none}
+  .strip a:hover{text-decoration:underline}
+  code{font-family:var(--mono);color:var(--hot);background:var(--panel2);
+       padding:.1rem .35rem;border-radius:4px;font-size:.92em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>AI <span>VILLAGE</span></h1>
+    <p class="tag">Two workshops. No experience needed, nothing to install.</p>
+  </header>
+
+  <div class="step">
+    <h2><b>1.</b> Pick a team name</h2>
+    <div class="teamrow">
+      <input type="text" id="team" placeholder="e.g. redpanda" autocomplete="off"
+             spellcheck="false" aria-label="Your team name">
+    </div>
+    <p class="hint">This is what shows on the scoreboard. Letters, numbers, <code>. _ -</code> — no spaces.</p>
+    <p class="bad" id="err" role="alert"></p>
+  </div>
+
+  <div class="step">
+    <h2><b>2.</b> Pick a workshop</h2>
+    <div class="cards">
+
+      <div class="card">
+        <div class="num">WORKSHOP 1</div>
+        <h3>The Document Did It</h3>
+        <p class="sub">prompt injection</p>
+        <p class="desc">Take over an AI assistant using nothing but text. No credentials,
+           no exploit, no code. Seven exercises.</p>
+        <a class="btn" id="go1" href="#" aria-disabled="true">Start &rarr;</a>
+      </div>
+
+      <div class="card">
+        <div class="num">WORKSHOP 2</div>
+        <h3>Shells From The Hub</h3>
+        <p class="sub">malicious models &middot; supply chain</p>
+        <p class="desc">Build a malicious AI model, publish it, and watch a machine you've
+           never seen run your code. Seven exercises, plus an optional appendix.</p>
+        <a class="btn" id="go2" href="#" aria-disabled="true">Start &rarr;</a>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="strip">
+    <a href="/" target="_blank" rel="noopener">Scoreboard &nearr;</a>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var TOKEN = /^[A-Za-z0-9._-]{1,64}$/;   // same rule the lab enforces
+  var KEY   = "aivillage-team";
+
+  var team = document.getElementById("team");
+  var err  = document.getElementById("err");
+  var go1  = document.getElementById("go1");
+  var go2  = document.getElementById("go2");
+
+  try { team.value = localStorage.getItem(KEY) || ""; } catch(e){}
+
+  function sync(){
+    var v = team.value.trim();
+    var ok = TOKEN.test(v);
+    if (v && !ok) {
+      err.textContent = "Letters, numbers, dot, underscore or hyphen only — no spaces.";
+    } else {
+      err.textContent = "";
+    }
+    // A dead button with no explanation reads as "this site is broken".
+    // Say what's missing instead.
+    [go1, go2].forEach(function(a, i){
+      a.setAttribute("aria-disabled", ok ? "false" : "true");
+      a.href = ok ? ("/w" + (i+1) + "?team=" + encodeURIComponent(v)) : "#";
+      a.innerHTML = ok ? "Start &rarr;" : "Pick a team name first";
+    });
+    if (ok) { try { localStorage.setItem(KEY, v); } catch(e){} }
+  }
+
+  team.addEventListener("input", sync);
+  team.addEventListener("keydown", function(e){
+    if (e.key === "Enter" && go1.getAttribute("aria-disabled") === "false") {
+      window.location.href = go1.href;
+    }
+  });
+  sync();
+  team.focus();
+})();
+</script>
+</body>
+</html>
