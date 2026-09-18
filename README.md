@@ -21,7 +21,7 @@ publish.
 ## Quick start
 
 ```bash
-git clone https://github.com/OWNER/REPO
+git clone https://github.com/haxrbyte/ai-village-workshops
 cd REPO
 ./setup.sh
 ```

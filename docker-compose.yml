@@ -28,7 +28,7 @@ services:
   shellbox:
     # Both keys on purpose: `up` PULLS the published image, `up --build`
     # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/shellbox:${LAB_VERSION:-edge}
+    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/shellbox:${LAB_VERSION:-edge}
     build: ./shellbox
     <<: *common
     networks: [sandbox]
@@ -88,7 +88,7 @@ services:
   hub:
     # Both keys on purpose: `up` PULLS the published image, `up --build`
     # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/hub:${LAB_VERSION:-edge}
+    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/hub:${LAB_VERSION:-edge}
     build: ./hub
     <<: *common
     networks: [lab, sandbox]
@@ -103,7 +103,7 @@ services:
   listener:
     # Both keys on purpose: `up` PULLS the published image, `up --build`
     # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/listener:${LAB_VERSION:-edge}
+    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/listener:${LAB_VERSION:-edge}
     build: ./listener
     <<: *common
     networks: [lab, sandbox]
@@ -120,7 +120,7 @@ services:
   scoreboard:
     # Both keys on purpose: `up` PULLS the published image, `up --build`
     # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/scoreboard:${LAB_VERSION:-edge}
+    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/scoreboard:${LAB_VERSION:-edge}
     build: ./scoreboard
     <<: *common
     environment:
@@ -140,7 +140,7 @@ services:
   mailmate:
     # Both keys on purpose: `up` PULLS the published image, `up --build`
     # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/mailmate:${LAB_VERSION:-edge}
+    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/mailmate:${LAB_VERSION:-edge}
     build: ./mailmate
     <<: *common
     environment:
@@ -180,7 +180,7 @@ services:
   scanner:
     # Both keys on purpose: `up` PULLS the published image, `up --build`
     # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/scanner:${LAB_VERSION:-edge}
+    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/scanner:${LAB_VERSION:-edge}
     build: ./scanner
     <<: *common
     mem_limit: 512m
@@ -191,7 +191,7 @@ services:
   victim:
     # Both keys on purpose: `up` PULLS the published image, `up --build`
     # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/OWNER/REPO}/victim:${LAB_VERSION:-edge}
+    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/victim:${LAB_VERSION:-edge}
     build: ./victim
     <<: *common
     networks: [sandbox]
