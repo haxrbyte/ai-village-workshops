@@ -35,7 +35,9 @@ import urllib.request
 
 G, R, Y, D, O = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[0m"
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-NB = ROOT.parent / "workshop" / "notebooks"
+# The shipped surface is the WEB page now, not notebooks. Same principle:
+# read what actually ships, never a known-good copy written in here.
+W2 = ROOT / "www" / "w2.html"
 ok = fail = 0
 
 
@@ -74,25 +76,19 @@ def main() -> int:
 
     print(f"\n  GATE 5/6 — auto_map really imports the module   lab={lab} team={team}\n")
 
-    # ---- 1. the notebooks ship the fixed config -----------------------------
-    # Read the CELL SOURCES, not the raw .ipynb text. In the file every quote
-    # is JSON-escaped (\\"auto_map\\"), so a regex written for normal source
-    # silently never matches — an earlier version of this gate passed happily
-    # against a notebook that had been reverted to the broken config.
-    def cell_text(name):
-        nb = json.loads((NB / name).read_text())
-        return "\n".join("".join(c.get("source", [])) for c in nb["cells"])
-
-    for name in ("05-no-weights-at-all.ipynb", "06-quiet.ipynb"):
-        src = cell_text(name)
-        check("AutoConfig" in src,
-              f"{name} maps AutoConfig, not just AutoModel",
-              "without it transformers never imports modeling_custom.py")
-        check("PretrainedConfig" in src,
-              f"{name} defines a PretrainedConfig subclass")
-        check(not re.search(r'"auto_map":\s*\{\s*"AutoModel"\s*:[^}]*\}', src),
-              f"{name} has no AutoModel-only auto_map left",
-              "that exact shape is what silently broke the exercise")
+    # ---- 1. the page ships the fixed config ---------------------------------
+    src = W2.read_text()
+    check("AutoConfig" in src,
+          "w2.html maps AutoConfig, not just AutoModel",
+          "without it transformers never imports modeling_custom.py")
+    check("PretrainedConfig" in src,
+          "w2.html defines a PretrainedConfig subclass")
+    # The page builds the object in JS with UNQUOTED keys, so match that shape
+    # too -- a regex written only for JSON silently never matches.
+    check(not re.search(r'auto_map:\s*\{\s*AutoModel\s*:[^}]*\}', src)
+          and not re.search(r'"auto_map":\s*\{\s*"AutoModel"\s*:[^}]*\}', src),
+          "no AutoModel-only auto_map left in w2.html",
+          "that exact shape is what silently broke the exercise")
 
     # ---- 3. end to end: upload -> victim loads -> beacon --------------------
     modeling = (
@@ -103,24 +99,24 @@ def main() -> int:
         "class MyModel(PreTrainedModel):\n    config_class = MyConfig\n"
         "    def __init__(self, config): super().__init__(config)\n"
     )
-    # Lift the config OUT of exercise 5's notebook. Writing a known-good one
-    # here would prove the mechanism works while saying nothing about what
-    # actually ships — which is how this exercise stayed broken.
-    nb_src = cell_text("05-no-weights-at-all.ipynb")
-    m = re.search(r'config = (\{.*?\n\})', nb_src, re.S)
-    if m:
-        cfg_txt = re.sub(r'#.*', '', m.group(1))
-        try:
-            config = json.dumps(json.loads(cfg_txt.replace("'", '"')))
-            check(True, "config lifted from the notebook itself", cfg_txt.strip()[:70])
-        except Exception:
-            config = None
-    else:
-        config = None
-    if config is None:
-        check(False, "config lifted from the notebook itself",
-              "could not parse it — gate cannot verify what ships")
+    # Lift the auto_map OUT of the page. Writing a known-good one here would
+    # prove the mechanism works while saying nothing about what actually ships
+    # -- which is how this exercise stayed broken in the first place.
+    m = re.search(r'auto_map:\s*\{([^}]*)\}', src)
+    if not m:
+        check(False, "auto_map lifted from w2.html itself",
+              "could not find it -- gate cannot verify what ships")
         return report()
+    lifted = m.group(1)
+    pairs = dict(re.findall(r'(\w+)\s*:\s*"([^"]+)"', lifted))
+    if "AutoConfig" not in pairs or "AutoModel" not in pairs:
+        check(False, "auto_map lifted from w2.html itself",
+              f"needs both keys, page has: {sorted(pairs)}")
+        return report()
+    check(True, "auto_map lifted from w2.html itself",
+          ", ".join(f"{k}={v}" for k, v in sorted(pairs.items()))[:70])
+    config = json.dumps({"model_type": "custom", "architectures": ["MyModel"],
+                         "auto_map": pairs})
     b = lambda x: base64.b64encode(x).decode()
     try:
         up = post(f"{lab}/hub/api/upload", {

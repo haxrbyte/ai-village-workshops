@@ -388,83 +388,28 @@ def _norm(text: str) -> str:
 
 
 def check_drift() -> int:
-    problems = []
-    for n, (nb_name, fragments) in sorted(MIRRORS.items()):
-        path = NB_DIR / nb_name
-        if not path.is_file():
-            problems.append(f"exercise {n}: {nb_name} not found")
-            continue
-        nb = json.loads(path.read_text())
-        haystack = _norm("\n".join("".join(c.get("source", []))
-                                   for c in nb.get("cells", [])))
-        for frag in fragments:
-            # Split on the substitution points — the notebooks write {TEAM}
-            # and {fn} there — and require every segment in between. Doubled
-            # braces are .format() escaping on this side only, so undo them.
-            for seg in re.split(r"\{(?:team|fn)\}", _norm(frag)):
-                seg = seg.strip()
-                if len(seg) < 12:
-                    continue
-                if seg not in haystack:
-                    problems.append(
-                        f"exercise {n}: not in {nb_name}:\n        ...{seg[:96]}...")
-                    break
+    """Refuses, loudly. Read the note above MIRRORS for why.
 
-    # ---- the plain-text copies: talk scripts, then the take sheet ---------
-    def _check_files(mirrors: dict) -> list:
-        """Same comparison as the notebooks, against a flat file."""
-        found = []
-        for n, (name, fragments) in sorted(mirrors.items()):
-            path = SCRIPTS / name
-            if not path.is_file():
-                found.append(f"exercise {n}: {name} not found")
-                continue
-            hay = _norm(path.read_text())
-            for frag in fragments:
-                for seg in re.split(r"\{(?:team|fn)\}", _norm(frag)):
-                    seg = seg.strip()
-                    if len(seg) < 12:
-                        continue
-                    if seg not in hay:
-                        found.append(
-                            f"exercise {n}: not in {name}:\n        ...{seg[:96]}...")
-                        break
-        return found
+    Upstream this asserted that every payload measured here still appeared
+    verbatim in the attendee notebooks, the talk scripts and the recording
+    sheet. None of those surfaces exist in this distribution, so there is
+    nothing to compare against.
 
-    script_problems = _check_files(SCRIPT_MIRRORS)
-    sheet_problems = _check_files(TAKE_SHEET_MIRRORS)
-
-    print(f"\n  {'drift check':22s} eval payloads vs attendee notebooks")
-    for n, (nb_name, _) in sorted(MIRRORS.items()):
-        bad = [x for x in problems if x.startswith(f"exercise {n}:")]
-        mark = f"{R}DRIFT{O}" if bad else f"{G}ok{O}"
-        print(f"    {n}  {NAMES[n]:22s} {mark}")
-        for b in bad:
-            print(f"        {D}{b.split(': ', 1)[1]}{O}")
-    print(f"\n  {'':22s} the same payloads vs the talk scripts")
-    for n, (name, _) in sorted(SCRIPT_MIRRORS.items()):
-        bad = [x for x in script_problems if x.startswith(f"exercise {n}:")]
-        mark = f"{R}DRIFT{O}" if bad else f"{G}ok{O}"
-        print(f"    {n}  {NAMES[n]:22s} {mark}")
-        for b in bad:
-            print(f"        {D}{b.split(': ', 1)[1]}{O}")
-    print(f"\n  {'':22s} the lines the take sheet tells you to type")
-    for n, (name, _) in sorted(TAKE_SHEET_MIRRORS.items()):
-        bad = [x for x in sheet_problems if x.startswith(f"exercise {n}:")]
-        mark = f"{R}DRIFT{O}" if bad else f"{G}ok{O}"
-        print(f"    {n}  {NAMES[n]:22s} {mark}")
-        for b in bad:
-            print(f"        {D}{b.split(': ', 1)[1]}{O}")
-    problems += script_problems + sheet_problems
-
-    if problems:
-        print(f"\n  {R}{len(problems)} payload(s) differ from the notebooks.{O}")
-        print("  Either the notebook changed and this file didn't, or the other")
-        print("  way round. They must agree — that divergence is what hid the")
-        print("  exercise 5 bug.\n")
-        return 1
-    print(f"\n  {G}every payload matches the notebook it mirrors{O}\n")
-    return 0
+    It returns non-zero rather than printing a tick. A check that cannot check
+    must never look like a check that passed.
+    """
+    print(f"\n  {R}drift check unavailable in this distribution{O}\n")
+    print("  This repo ships the WEB workshop. The surfaces this check compared")
+    print("  against — the notebooks, the talk scripts, the recording sheet —")
+    print("  are not here.\n")
+    print("  Measured while packaging: only 3 of 13 payload constants in this")
+    print("  file appear in www/w1.html or www/w1-content.json. The page words")
+    print("  its hints differently from the notebooks the rates were taken")
+    print("  against, so the recorded pass rates describe the NOTEBOOK payloads,")
+    print("  not the exact strings the page hands a user.\n")
+    print("  If you change a payload, re-measure with --trials. Do not assume")
+    print("  the recorded numbers still describe what ships.\n")
+    return 2
 
 
 EXERCISES = {1: ex1, 2: ex2, 3: ex3, 4: ex4, 5: ex5, 6: ex6, 7: ex7}

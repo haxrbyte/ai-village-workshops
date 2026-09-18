@@ -80,6 +80,12 @@ can watch it catch what the old one missed. See [SECURITY.md](SECURITY.md).
   own measurements it scores about 6 of 8, with exercises 4 and 5 flipping
   between runs. A bigger model was tried and scored *worse*. If an exercise
   fails once, try it again before assuming you got it wrong.
+  Two caveats on that number, because it is easy to over-read: it was measured
+  against the **notebook** wording of each payload, and this repo ships the web
+  version, whose hints are worded differently — only 3 of 13 payload strings
+  match verbatim. And it was measured on Apple Silicon; different hardware runs
+  different kernels, so greedy decoding can diverge. Treat it as an indication,
+  not a guarantee. `scripts/eval_workshop1.py --trials N` re-measures.
 - **Workshop 2 exercise 8 is an optional appendix.** It needs a backdoored
   model that is not distributed here — you build it yourself from
   [`sleeper/README.md`](sleeper/README.md). It trains in 7-10 minutes on Apple
