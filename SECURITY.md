@@ -69,8 +69,17 @@ Two specifics worth stating, because we checked rather than assumed:
   and a config field that did (a leftover from a talk demo, pointing at
   `evilcorp/fast-attn@main`) was removed before publication for exactly that
   reason. Do not create repos under that name.
-- **`northwind` is not registered.** If you fork this and change the fiction,
-  pick names you control, and do not register these ones to "reserve" them.
+- **`northwind` is not registered anywhere, and that is deliberate.** We are
+  not going to register it either. The hub in this lab is a fake one running
+  in a container; giving its fictional tenants real accounts on a real
+  platform would make the fiction less contained, not more. Registering names
+  you have no intention of using is squatting whatever the motive.
+
+The consequence, stated plainly rather than hidden: these names are
+unclaimed, so someone else could create them on a real hub at any time. That
+does not affect the lab, because nothing in it resolves against a real hub.
+It does mean **you should never look these names up on huggingface.co and
+assume what you find is ours** — it is not, and it never will be.
 
 The phishing URL baked into the exercise-8 appendix uses the RFC 2606
 `.invalid` TLD, which can never be delegated to anyone. That was a deliberate
