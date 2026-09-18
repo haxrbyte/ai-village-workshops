@@ -148,8 +148,22 @@ if [ "$BUILD" = "1" ]; then
   docker compose build || die "build failed" "docker compose build --progress=plain"
 else
   say "Pulling images"
-  docker compose pull --quiet 2>/dev/null || die "could not pull images" \
-    "Check your network, or build locally instead:  ./setup.sh --build"
+  # Distinguish "not allowed" from "no network". They need different fixes and
+  # conflating them sends people to check a router that is working fine.
+  pull_err=$(docker compose pull --quiet 2>&1) || {
+    if printf '%s' "$pull_err" | grep -qiE 'unauthor|denied|forbidden|401|403'; then
+      die "the published images are not readable by this machine" \
+        "The images are private, or Docker is not signed in to the registry." \
+        "Build them locally instead (no account needed):" \
+        "    ./setup.sh --build" \
+        "Or sign in, if you know you have access:" \
+        "    echo \$GITHUB_TOKEN | docker login ghcr.io -u <your-username> --password-stdin"
+    else
+      die "could not pull images" \
+        "$(printf '%s' "$pull_err" | tail -2)" \
+        "Build them locally instead:  ./setup.sh --build"
+    fi
+  }
   ok "images present"
 fi
 

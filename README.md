@@ -28,6 +28,10 @@ cd ai-village-workshops
 
 Then open the URL it prints (default <http://localhost:8080/start>).
 
+Prefer not to pull prebuilt images, or working offline? `./setup.sh --build`
+builds all seven from source instead. It is slower the first time — `victim`
+pulls PyTorch — but needs no registry account.
+
 `setup.sh` checks your prerequisites, pulls the images, pulls the language
 model, starts everything, and verifies it with the project's own test gates. If
 something is wrong it tells you the exact command to fix it.
