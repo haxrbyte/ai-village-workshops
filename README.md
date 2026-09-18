@@ -28,11 +28,17 @@ cd ai-village-workshops
 
 Then open the URL it prints (default <http://localhost:8080/start>).
 
-Prefer not to pull prebuilt images, or working offline? `./setup.sh --build`
-builds all seven from source instead. It is slower the first time — `victim`
-pulls PyTorch — but needs no registry account.
+**Everything is built on your machine.** There are no prebuilt images to pull
+and no account to create. That is a deliberate choice for this particular
+repo: a workshop about malicious model supply chains should not open by asking
+you to trust someone else's binaries. Reproducibility comes from the pins —
+base images by digest, every Python dependency from a lock file — which you
+can read before you run anything.
 
-`setup.sh` checks your prerequisites, pulls the images, pulls the language
+The first build is the slow part, because `victim` installs PyTorch. After
+that the layer cache makes it quick.
+
+`setup.sh` checks your prerequisites, builds the images, fetches the language
 model, starts everything, and verifies it with the project's own test gates. If
 something is wrong it tells you the exact command to fix it.
 

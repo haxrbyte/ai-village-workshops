@@ -14,7 +14,7 @@ quickstart:  ## first run: check prereqs, pull, start, verify
 	@./setup.sh
 
 up:  ## start (already set up)
-	@docker compose up -d --no-build
+	@docker compose up -d
 
 down:  ## stop
 	@docker compose down
@@ -48,7 +48,7 @@ check-deep: check  ## ...plus exercises 5-6 and the network isolation claim
 seed:  ## rebuild the fake hub's model repos
 	@python3 scripts/seed_models.py
 
-build:  ## build images locally instead of pulling (contributors)
+build:  ## rebuild the images (they are always built locally)
 	@docker compose build
 
 reset:  ## wipe uploads and team state, keep the stack up

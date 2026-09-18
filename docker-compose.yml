@@ -19,6 +19,15 @@ x-hc: &hc
   retries: 5
   start_period: 30s
 
+# NOTHING HERE IS PULLED FROM A REGISTRY. Every service in this lab is built
+# from the Dockerfile beside it, on your machine. That is deliberate: a
+# workshop about malicious model supply chains should not ask you to trust
+# someone else's prebuilt binaries. Reproducibility comes from the pins --
+# base images by digest (base-images.lock) and every Python dependency from
+# a requirements.lock -- not from a published artefact.
+#
+# The only images fetched are third-party ones, pinned by digest: nginx,
+# mailpit, and optionally ollama.
 services:
   # ---- shellbox: catches exercise 7's reverse shell on the attendee's behalf.
   # A browser cannot listen on a port, so the web version of that exercise was
@@ -26,9 +35,6 @@ services:
   # service on purpose: the listener is the feedback layer for both workshops
   # and must not be destabilised by socket handling.
   shellbox:
-    # Both keys on purpose: `up` PULLS the published image, `up --build`
-    # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/shellbox:${LAB_VERSION:-edge}
     build: ./shellbox
     <<: *common
     networks: [sandbox]
@@ -86,9 +92,6 @@ services:
       <<: *hc
 
   hub:
-    # Both keys on purpose: `up` PULLS the published image, `up --build`
-    # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/hub:${LAB_VERSION:-edge}
     build: ./hub
     <<: *common
     networks: [lab, sandbox]
@@ -101,9 +104,6 @@ services:
       <<: *hc
 
   listener:
-    # Both keys on purpose: `up` PULLS the published image, `up --build`
-    # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/listener:${LAB_VERSION:-edge}
     build: ./listener
     <<: *common
     networks: [lab, sandbox]
@@ -118,9 +118,6 @@ services:
       <<: *hc
 
   scoreboard:
-    # Both keys on purpose: `up` PULLS the published image, `up --build`
-    # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/scoreboard:${LAB_VERSION:-edge}
     build: ./scoreboard
     <<: *common
     environment:
@@ -138,9 +135,6 @@ services:
       <<: *hc
 
   mailmate:
-    # Both keys on purpose: `up` PULLS the published image, `up --build`
-    # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/mailmate:${LAB_VERSION:-edge}
     build: ./mailmate
     <<: *common
     environment:
@@ -178,9 +172,6 @@ services:
       <<: *hc
 
   scanner:
-    # Both keys on purpose: `up` PULLS the published image, `up --build`
-    # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/scanner:${LAB_VERSION:-edge}
     build: ./scanner
     <<: *common
     mem_limit: 512m
@@ -189,9 +180,6 @@ services:
       <<: *hc
 
   victim:
-    # Both keys on purpose: `up` PULLS the published image, `up --build`
-    # builds from source. Contributors and users share one file.
-    image: ${IMAGE_PREFIX:-ghcr.io/haxrbyte/ai-village-workshops}/victim:${LAB_VERSION:-edge}
     build: ./victim
     <<: *common
     networks: [sandbox]

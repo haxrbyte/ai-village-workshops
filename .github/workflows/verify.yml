@@ -46,8 +46,8 @@ jobs:
 
       # --canned: gate 3 tests Workshop 2, which never touches a model. Pulling
       # 2 GB of llama per CI run would be waste.
-      - name: setup.sh (build from source, no model)
-        run: ./setup.sh --canned --build --port 8080
+      - name: setup.sh (builds everything locally, no model)
+        run: ./setup.sh --canned --port 8080
 
       - name: Exercises 5-6 really import the module
         run: python3 scripts/gate5_6_automap.py --lab http://localhost:8080

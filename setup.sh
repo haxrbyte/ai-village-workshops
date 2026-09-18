@@ -2,10 +2,12 @@
 # ===========================================================================
 # One command from a fresh clone to a working lab.
 #
-#   ./setup.sh                 pull images, start, verify
+#   ./setup.sh                 build, start, verify
 #   ./setup.sh --canned        skip Ollama; Workshop 1 runs scripted replies
-#   ./setup.sh --build         build images locally instead of pulling
 #   ./setup.sh --port 9090     override the host port
+#
+# Everything is built on THIS machine. Nothing is pulled from a registry
+# except nginx and mailpit, both pinned by digest.
 #
 # Every failure prints FAIL then FIX with the exact command to run. The
 # verification at the end is the project's own gates, not a new check.
@@ -20,12 +22,12 @@ fix() { printf "  \033[33mFIX \033[0m  %s\n" "$*"; }
 say() { printf "\n\033[1;36m==> %s\033[0m\n" "$*"; }
 die() { bad "$1"; shift; for l in "$@"; do fix "$l"; done; exit 1; }
 
-CANNED=0; BUILD=0; PORT=""; NO_OLLAMA=0
+CANNED=0; PORT=""; NO_OLLAMA=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --canned)     CANNED=1; NO_OLLAMA=1 ;;
     --no-ollama)  NO_OLLAMA=1 ;;
-    --build)      BUILD=1 ;;
+    --build)      ;;  # accepted and ignored: building is the only mode
     --port)       PORT="$2"; shift ;;
     -h|--help)    sed -n '2,12p' "$0"; exit 0 ;;
     *)            die "unknown option: $1" "./setup.sh --help" ;;
@@ -143,35 +145,18 @@ else
 fi
 
 # --- 9. images --------------------------------------------------------------
-if [ "$BUILD" = "1" ]; then
-  say "Building images (slow: torch is ~200 MB)"
-  docker compose build || die "build failed" "docker compose build --progress=plain"
-else
-  say "Pulling images"
-  # Distinguish "not allowed" from "no network". They need different fixes and
-  # conflating them sends people to check a router that is working fine.
-  pull_err=$(docker compose pull --quiet 2>&1) || {
-    if printf '%s' "$pull_err" | grep -qiE 'unauthor|denied|forbidden|401|403'; then
-      die "the published images are not readable by this machine" \
-        "The images are private, or Docker is not signed in to the registry." \
-        "Build them locally instead (no account needed):" \
-        "    ./setup.sh --build" \
-        "Or sign in, if you know you have access:" \
-        "    echo \$GITHUB_TOKEN | docker login ghcr.io -u <your-username> --password-stdin"
-    else
-      die "could not pull images" \
-        "$(printf '%s' "$pull_err" | tail -2)" \
-        "Build them locally instead:  ./setup.sh --build"
-    fi
-  }
-  ok "images present"
-fi
+say "Building images"
+printf "  this is the slow step the first time -- victim pulls PyTorch.\n"
+printf "  Later runs reuse the layer cache and take seconds.\n"
+docker compose build || die "build failed" \
+  "Re-run with full output to see which service and which line:" \
+  "    docker compose build --progress=plain" \
+  "Out of disk? Reclaim with:  docker system prune -a"
+ok "images built"
 
 # --- 10. start --------------------------------------------------------------
 say "Starting"
-UP_ARGS="-d"; [ "$BUILD" = "1" ] || UP_ARGS="-d --no-build"
-# shellcheck disable=SC2086
-docker compose up $UP_ARGS || die "compose up failed" "docker compose logs"
+docker compose up -d || die "compose up failed" "docker compose logs"
 
 if [ "$OLLAMA_OK" = "2" ]; then
   say "Pulling llama3.2:3b (about 2 GB, once)"
