@@ -22,7 +22,7 @@ publish.
 
 ```bash
 git clone https://github.com/haxrbyte/ai-village-workshops
-cd REPO
+cd ai-village-workshops
 ./setup.sh
 ```
 
