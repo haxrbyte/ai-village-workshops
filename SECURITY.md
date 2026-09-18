@@ -51,12 +51,31 @@ outdated on purpose and an upgrade would silently repair the bug being taught.
 
 ## The fictional names are fictional
 
-`northwind`, `evilcorp`, `northwind.local` and the model repo names are invented
-and are **not registered** on any real model hub. Do not create them on a real
-hub, and do not run the lab's payloads with `HF_ENDPOINT` unset — the `victim`
-container sets `HF_HUB_OFFLINE=1` precisely so a mistake there cannot reach the
-real internet. The phishing URL baked into the exercise-8 appendix uses the
-RFC 2606 `.invalid` TLD, which can never be delegated to anyone.
+`northwind`, `evilcorp`, `northwind.local` and the model repo names are
+invented. They exist only inside this lab, served by the fake hub that runs in
+a container next to you.
+
+Every repo path here is resolved through `HF_ENDPOINT`, which points at that
+fake hub. **Do not run the lab's payloads with `HF_ENDPOINT` unset** — a name
+like `evilcorp/llama-3-8b-instruct-fast` would then be resolved against the
+real huggingface.co. The `victim` container additionally sets
+`HF_HUB_OFFLINE=1` so that a mistake there cannot reach the internet at all.
+
+Two specifics worth stating, because we checked rather than assumed:
+
+- **`evilcorp` is a real organisation name on Hugging Face and it is not
+  ours.** It was registered in 2022, holds no models, and has nothing to do
+  with this project. Nothing in these workshops points at it over the network,
+  and a config field that did (a leftover from a talk demo, pointing at
+  `evilcorp/fast-attn@main`) was removed before publication for exactly that
+  reason. Do not create repos under that name.
+- **`northwind` is not registered.** If you fork this and change the fiction,
+  pick names you control, and do not register these ones to "reserve" them.
+
+The phishing URL baked into the exercise-8 appendix uses the RFC 2606
+`.invalid` TLD, which can never be delegated to anyone. That was a deliberate
+fix: an earlier version used a plausible-looking real TLD that turned out to
+resolve to a live third party's hosts.
 
 ## Reporting something
 

